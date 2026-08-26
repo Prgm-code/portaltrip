@@ -1,0 +1,24 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: portaltrip-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: rickandmorty
+      POSTGRES_USER: rick
+      POSTGRES_PASSWORD: morty
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # La imagen oficial ejecuta automáticamente los .sql de este directorio
+      # la primera vez que se inicializa el volumen de datos.
+      - ./db/seed.sql:/docker-entrypoint-initdb.d/seed.sql:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U rick -d rickandmorty']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:
