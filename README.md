@@ -4,7 +4,7 @@
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1.1-brightgreen.svg)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-blue.svg)
 ![Architecture](https://img.shields.io/badge/Architecture-Layered%20Services-blue.svg)
-![Coverage](https://img.shields.io/badge/Coverage-100%25-brightgreen.svg)
+[![Coverage](https://img.shields.io/badge/Coverage-100%25-brightgreen.svg)](https://prgm-code.github.io/portaltrip/)
 ![Status](https://img.shields.io/badge/Build-Passing-success.svg)
 
 **PortalTrip API** is a REST service built with **Java 26** and **Spring Boot 4.1.1**. It stores the Rick and Morty catalog in PostgreSQL and manages interdimensional trip reservations, server-side quotes, companion validation and reservation state changes.
@@ -283,6 +283,8 @@ The HTML report is generated at:
 target/site/jacoco/index.html
 ```
 
+**[Open the JaCoCo report published by GitHub Actions](https://prgm-code.github.io/portaltrip/)**
+
 Current verified coverage:
 
 | Counter | Covered | Result |
@@ -292,7 +294,7 @@ Current verified coverage:
 | Lines | 500 / 500 | 100% |
 | Methods | 157 / 157 | 100% |
 
-GitHub Actions executes `./mvnw -B clean verify` on pull requests and pushes to `main`. It retains the Surefire and JaCoCo artifacts for 14 days and publishes the successful `main` report at [prgm-code.github.io/portaltrip](https://prgm-code.github.io/portaltrip/).
+GitHub Actions executes `./mvnw -B clean verify` on pull requests and pushes to `main`. It retains the Surefire and JaCoCo artifacts for 14 days and publishes the successful `main` report with GitHub Pages.
 
 ---
 
