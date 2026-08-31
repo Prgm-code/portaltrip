@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -14,9 +15,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import cl.prgm.portaltrip.application.port.in.CharacterService;
-import cl.prgm.portaltrip.application.port.in.LocationService;
-import cl.prgm.portaltrip.application.port.in.ReservationService;
+import cl.prgm.portaltrip.application.service.CharacterService;
+import cl.prgm.portaltrip.application.service.LocationService;
+import cl.prgm.portaltrip.application.service.ReservationService;
 import cl.prgm.portaltrip.domain.model.Character;
 import cl.prgm.portaltrip.domain.model.Location;
 import cl.prgm.portaltrip.domain.model.Reservation;
@@ -24,12 +25,16 @@ import cl.prgm.portaltrip.infrastructure.web.dto.ApiResponseDto;
 import cl.prgm.portaltrip.infrastructure.web.dto.ReservationRequestDto;
 import cl.prgm.portaltrip.infrastructure.web.dto.ReservationResponseDto;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 
 @Validated
 @RestController
-@RequestMapping("/api/v1/reservations")
+@RequestMapping(path = "/api/v1/reservations", produces = MediaType.APPLICATION_JSON_VALUE)
 @Tag(name = "Reservations")
 public class ReservationController {
 
@@ -49,8 +54,26 @@ public class ReservationController {
 	@PostMapping
 	@ResponseStatus(HttpStatus.CREATED)
 	@Operation(
-			summary = "Crear una reserva",
-			description = "Valida el borrador (pasajero, email, fecha futura, 1-8 pasajeros, máximo 3 acompañantes vivos, seguro obligatorio en dimensiones 'unknown'), calcula la cotización en el servidor y persiste la reserva con status CONFIRMED y número PT-<año>-<6 dígitos>. Devuelve la reserva con destino, acompañantes y desglose del quote. Responde 400 con la lista de errores si la validación falla.")
+			summary = "Create a reservation",
+			description = "Validates the request, calculates the quote, and persists a confirmed reservation with its destination, companions, and price breakdown.")
+	@ApiResponses({
+		@ApiResponse(responseCode = "201", description = "Reservation created", useReturnTypeSchema = true),
+		@ApiResponse(
+				responseCode = "400",
+				description = "Invalid reservation request",
+				content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+						schema = @Schema(implementation = ApiResponseDto.class))),
+		@ApiResponse(
+				responseCode = "404",
+				description = "Destination or companion not found",
+				content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+						schema = @Schema(implementation = ApiResponseDto.class))),
+		@ApiResponse(
+				responseCode = "500",
+				description = "Internal server error",
+				content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+						schema = @Schema(implementation = ApiResponseDto.class)))
+	})
 	public ApiResponseDto<ReservationResponseDto> create(@Valid @RequestBody ReservationRequestDto request) {
 		ReservationResponseDto reservation = toResponse(reservationService.create(request.toDraft()));
 		return ApiResponseDto.success(HttpStatus.CREATED, "Reservation created successfully", reservation);
@@ -58,8 +81,16 @@ public class ReservationController {
 
 	@GetMapping
 	@Operation(
-			summary = "Listar reservas",
-			description = "Devuelve todas las reservas, de la más reciente a la más antigua, con su destino, acompañantes, quote y estado actual.")
+			summary = "List reservations",
+			description = "Returns every reservation from newest to oldest with destination, companions, quote, and current status.")
+	@ApiResponses({
+		@ApiResponse(responseCode = "200", description = "Reservations retrieved", useReturnTypeSchema = true),
+		@ApiResponse(
+				responseCode = "500",
+				description = "Internal server error",
+				content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+						schema = @Schema(implementation = ApiResponseDto.class)))
+	})
 	public ApiResponseDto<List<ReservationResponseDto>> findAll() {
 		List<ReservationResponseDto> reservations = reservationService.findAll().stream()
 				.map(this::toResponse)
@@ -69,8 +100,26 @@ public class ReservationController {
 
 	@GetMapping("/{id}")
 	@Operation(
-			summary = "Obtener reserva por id",
-			description = "Devuelve la reserva completa (destino, acompañantes, quote, estado y marcas de tiempo). Responde 404 si no existe.")
+			summary = "Get reservation by ID",
+			description = "Returns a reservation with its destination, companions, quote, status, and timestamps.")
+	@ApiResponses({
+		@ApiResponse(responseCode = "200", description = "Reservation retrieved", useReturnTypeSchema = true),
+		@ApiResponse(
+				responseCode = "400",
+				description = "Invalid reservation ID",
+				content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+						schema = @Schema(implementation = ApiResponseDto.class))),
+		@ApiResponse(
+				responseCode = "404",
+				description = "Reservation not found",
+				content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+						schema = @Schema(implementation = ApiResponseDto.class))),
+		@ApiResponse(
+				responseCode = "500",
+				description = "Internal server error",
+				content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+						schema = @Schema(implementation = ApiResponseDto.class)))
+	})
 	public ApiResponseDto<ReservationResponseDto> findById(@PathVariable UUID id) {
 		ReservationResponseDto reservation = toResponse(reservationService.findById(id));
 		return ApiResponseDto.success(HttpStatus.OK, "Reservation retrieved successfully", reservation);
@@ -78,8 +127,31 @@ public class ReservationController {
 
 	@PatchMapping("/{id}/cancel")
 	@Operation(
-			summary = "Cancelar una reserva",
-			description = "Marca la reserva como CANCELLED. Responde 409 si ya está COMPLETED o CANCELLED.")
+			summary = "Cancel a reservation",
+			description = "Marks a reservation as cancelled. Completed and already cancelled reservations cannot be cancelled.")
+	@ApiResponses({
+		@ApiResponse(responseCode = "200", description = "Reservation cancelled", useReturnTypeSchema = true),
+		@ApiResponse(
+				responseCode = "400",
+				description = "Invalid reservation ID",
+				content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+						schema = @Schema(implementation = ApiResponseDto.class))),
+		@ApiResponse(
+				responseCode = "404",
+				description = "Reservation not found",
+				content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+						schema = @Schema(implementation = ApiResponseDto.class))),
+		@ApiResponse(
+				responseCode = "409",
+				description = "Invalid reservation state transition",
+				content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+						schema = @Schema(implementation = ApiResponseDto.class))),
+		@ApiResponse(
+				responseCode = "500",
+				description = "Internal server error",
+				content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+						schema = @Schema(implementation = ApiResponseDto.class)))
+	})
 	public ApiResponseDto<ReservationResponseDto> cancel(@PathVariable UUID id) {
 		ReservationResponseDto reservation = toResponse(reservationService.cancel(id));
 		return ApiResponseDto.success(HttpStatus.OK, "Reservation cancelled successfully", reservation);
@@ -87,8 +159,31 @@ public class ReservationController {
 
 	@PatchMapping("/{id}/start")
 	@Operation(
-			summary = "Iniciar una reserva",
-			description = "Transición CONFIRMED → IN_PROGRESS; marca startedAt. Responde 409 si la reserva no está CONFIRMED.")
+			summary = "Start a reservation",
+			description = "Moves a confirmed reservation to in progress and records its start time.")
+	@ApiResponses({
+		@ApiResponse(responseCode = "200", description = "Reservation started", useReturnTypeSchema = true),
+		@ApiResponse(
+				responseCode = "400",
+				description = "Invalid reservation ID",
+				content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+						schema = @Schema(implementation = ApiResponseDto.class))),
+		@ApiResponse(
+				responseCode = "404",
+				description = "Reservation not found",
+				content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+						schema = @Schema(implementation = ApiResponseDto.class))),
+		@ApiResponse(
+				responseCode = "409",
+				description = "Invalid reservation state transition",
+				content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+						schema = @Schema(implementation = ApiResponseDto.class))),
+		@ApiResponse(
+				responseCode = "500",
+				description = "Internal server error",
+				content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+						schema = @Schema(implementation = ApiResponseDto.class)))
+	})
 	public ApiResponseDto<ReservationResponseDto> start(@PathVariable UUID id) {
 		ReservationResponseDto reservation = toResponse(reservationService.start(id));
 		return ApiResponseDto.success(HttpStatus.OK, "Reservation started successfully", reservation);
@@ -96,8 +191,31 @@ public class ReservationController {
 
 	@PatchMapping("/{id}/complete")
 	@Operation(
-			summary = "Completar una reserva",
-			description = "Transición IN_PROGRESS → COMPLETED; marca completedAt. COMPLETED es un estado terminal. Responde 409 si la reserva no está en curso.")
+			summary = "Complete a reservation",
+			description = "Moves an in-progress reservation to completed and records its completion time.")
+	@ApiResponses({
+		@ApiResponse(responseCode = "200", description = "Reservation completed", useReturnTypeSchema = true),
+		@ApiResponse(
+				responseCode = "400",
+				description = "Invalid reservation ID",
+				content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+						schema = @Schema(implementation = ApiResponseDto.class))),
+		@ApiResponse(
+				responseCode = "404",
+				description = "Reservation not found",
+				content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+						schema = @Schema(implementation = ApiResponseDto.class))),
+		@ApiResponse(
+				responseCode = "409",
+				description = "Invalid reservation state transition",
+				content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+						schema = @Schema(implementation = ApiResponseDto.class))),
+		@ApiResponse(
+				responseCode = "500",
+				description = "Internal server error",
+				content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+						schema = @Schema(implementation = ApiResponseDto.class)))
+	})
 	public ApiResponseDto<ReservationResponseDto> complete(@PathVariable UUID id) {
 		ReservationResponseDto reservation = toResponse(reservationService.complete(id));
 		return ApiResponseDto.success(HttpStatus.OK, "Reservation completed successfully", reservation);

@@ -10,13 +10,13 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import cl.prgm.portaltrip.application.port.in.QuoteQuery;
-import cl.prgm.portaltrip.application.port.out.LocationRepository;
 import cl.prgm.portaltrip.domain.exception.ResourceNotFoundException;
-import cl.prgm.portaltrip.domain.model.Location;
 import cl.prgm.portaltrip.domain.model.Quote;
 import cl.prgm.portaltrip.domain.model.RiskLevel;
 import cl.prgm.portaltrip.domain.model.TripType;
+import cl.prgm.portaltrip.infrastructure.persistence.CharacterEntity;
+import cl.prgm.portaltrip.infrastructure.persistence.LocationEntity;
+import cl.prgm.portaltrip.infrastructure.persistence.repository.LocationJpaRepository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -26,14 +26,14 @@ import static org.mockito.Mockito.when;
 class QuoteServiceImplTest {
 
 	@Mock
-	private LocationRepository locationRepository;
+	private LocationJpaRepository locationJpaRepository;
 
 	@InjectMocks
 	private QuoteServiceImpl quoteService;
 
 	@Test
 	void quotesWithRequestedInsurance() {
-		when(locationRepository.findDetailedById(1)).thenReturn(Optional.of(destination("Dimension C-137")));
+		when(locationJpaRepository.findDetailedById(1)).thenReturn(Optional.of(destination("Dimension C-137")));
 
 		Quote quote = quoteService.quote(new QuoteQuery(1, 2, TripType.EXPLORATION, true));
 
@@ -45,7 +45,7 @@ class QuoteServiceImplTest {
 
 	@Test
 	void forcesInsuranceForUnknownDimension() {
-		when(locationRepository.findDetailedById(1)).thenReturn(Optional.of(destination("unknown")));
+		when(locationJpaRepository.findDetailedById(1)).thenReturn(Optional.of(destination("unknown")));
 
 		Quote quote = quoteService.quote(new QuoteQuery(1, 1, TripType.EXPRESS, false));
 
@@ -56,7 +56,7 @@ class QuoteServiceImplTest {
 
 	@Test
 	void skipsInsuranceWhenNotRequiredNorRequested() {
-		when(locationRepository.findDetailedById(1)).thenReturn(Optional.of(destination("Dimension C-137")));
+		when(locationJpaRepository.findDetailedById(1)).thenReturn(Optional.of(destination("Dimension C-137")));
 
 		Quote quote = quoteService.quote(new QuoteQuery(1, 1, TripType.EXPRESS, false));
 
@@ -66,15 +66,21 @@ class QuoteServiceImplTest {
 
 	@Test
 	void throwsWhenDestinationMissing() {
-		when(locationRepository.findDetailedById(99)).thenReturn(Optional.empty());
+		when(locationJpaRepository.findDetailedById(99)).thenReturn(Optional.empty());
 
 		assertThatThrownBy(() -> quoteService.quote(new QuoteQuery(99, 1, TripType.EXPRESS, false)))
 				.isInstanceOf(ResourceNotFoundException.class)
 				.hasMessage("Location with id '99' not found");
 	}
 
-	private static Location destination(String dimension) {
-		return new Location(1, "Earth (C-137)", "Planet", dimension, List.of(1, 2, 3, 4, 5));
+	private static LocationEntity destination(String dimension) {
+		LocationEntity destination = new LocationEntity(1, "Earth (C-137)", "Planet", dimension);
+		for (int id = 1; id <= 5; id++) {
+			destination.getResidents().add(new CharacterEntity(
+					id, "Resident " + id, "Alive", "Human", "", "Unknown",
+					destination, destination, "img"));
+		}
+		return destination;
 	}
 
 }

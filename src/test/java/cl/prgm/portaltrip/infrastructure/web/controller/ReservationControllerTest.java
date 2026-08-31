@@ -14,9 +14,9 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import cl.prgm.portaltrip.application.port.in.CharacterService;
-import cl.prgm.portaltrip.application.port.in.LocationService;
-import cl.prgm.portaltrip.application.port.in.ReservationService;
+import cl.prgm.portaltrip.application.service.CharacterService;
+import cl.prgm.portaltrip.application.service.LocationService;
+import cl.prgm.portaltrip.application.service.ReservationService;
 import cl.prgm.portaltrip.domain.exception.DomainValidationException;
 import cl.prgm.portaltrip.domain.exception.InvalidReservationStateException;
 import cl.prgm.portaltrip.domain.exception.ResourceNotFoundException;
@@ -54,7 +54,7 @@ class ReservationControllerTest {
 				"companionIds": [2],
 				"tripType": "express",
 				"insurance": true,
-				"comments": "portal estable"
+				"comments": "stable portal"
 			}
 			""";
 
@@ -108,14 +108,14 @@ class ReservationControllerTest {
 	@Test
 	void createReturns400WithDomainErrors() throws Exception {
 		when(reservationService.create(any(ReservationDraft.class)))
-				.thenThrow(new DomainValidationException(List.of("Todos los personajes seleccionados deben estar vivos.")));
+				.thenThrow(new DomainValidationException(List.of("Every selected companion must be alive.")));
 
 		mockMvc.perform(post("/api/v1/reservations")
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(VALID_BODY))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.status").value(400))
-				.andExpect(jsonPath("$.data[0]").value("Todos los personajes seleccionados deben estar vivos."));
+				.andExpect(jsonPath("$.data[0]").value("Every selected companion must be alive."));
 	}
 
 	@Test
@@ -226,7 +226,7 @@ class ReservationControllerTest {
 				List.of(2),
 				TripType.EXPRESS,
 				true,
-				"portal estable",
+				"stable portal",
 				quote,
 				OffsetDateTime.parse("2026-01-01T10:00:00Z"),
 				null,

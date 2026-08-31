@@ -15,4 +15,8 @@ public record Character(
 		String locationName,
 		String image,
 		List<Integer> episodeIds) {
+
+	public boolean isAlive() {
+		return "Alive".equals(status);
+	}
 }

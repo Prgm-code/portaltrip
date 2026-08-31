@@ -5,6 +5,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
+import cl.prgm.portaltrip.domain.exception.DomainValidationException;
 import cl.prgm.portaltrip.domain.exception.InvalidReservationStateException;
 
 public record Reservation(
@@ -24,6 +25,45 @@ public record Reservation(
 		OffsetDateTime createdAt,
 		OffsetDateTime startedAt,
 		OffsetDateTime completedAt) {
+
+	public Reservation {
+		companionIds = List.copyOf(companionIds);
+	}
+
+	public static Reservation confirm(
+			ReservationDraft draft,
+			Location destination,
+			List<Character> companions,
+			Quote quote,
+			UUID id,
+			String number,
+			OffsetDateTime createdAt) {
+		if (companions.stream().anyMatch(companion -> !companion.isAlive())) {
+			throw new DomainValidationException("Every selected companion must be alive.");
+		}
+		if (destination.requiresInterdimensionalInsurance() && !draft.insurance()) {
+			throw new DomainValidationException(
+					"Destinations in an unknown dimension require interdimensional insurance.");
+		}
+
+		return new Reservation(
+				id,
+				number,
+				ReservationStatus.CONFIRMED,
+				draft.passengerName(),
+				draft.email(),
+				destination.id(),
+				draft.travelDate(),
+				draft.passengers(),
+				draft.companionIds(),
+				draft.tripType(),
+				draft.insurance(),
+				draft.comments(),
+				quote,
+				createdAt,
+				null,
+				null);
+	}
 
 	public Reservation start(OffsetDateTime now) {
 		if (status != ReservationStatus.CONFIRMED) {

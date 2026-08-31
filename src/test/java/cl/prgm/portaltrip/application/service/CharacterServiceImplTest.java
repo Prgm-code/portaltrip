@@ -9,9 +9,12 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import cl.prgm.portaltrip.application.port.out.CharacterRepository;
 import cl.prgm.portaltrip.domain.exception.ResourceNotFoundException;
 import cl.prgm.portaltrip.domain.model.Character;
+import cl.prgm.portaltrip.infrastructure.persistence.CharacterEntity;
+import cl.prgm.portaltrip.infrastructure.persistence.EpisodeEntity;
+import cl.prgm.portaltrip.infrastructure.persistence.LocationEntity;
+import cl.prgm.portaltrip.infrastructure.persistence.repository.CharacterJpaRepository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -21,45 +24,47 @@ import static org.mockito.Mockito.when;
 class CharacterServiceImplTest {
 
 	@Mock
-	private CharacterRepository characterRepository;
+	private CharacterJpaRepository characterJpaRepository;
 
 	@InjectMocks
 	private CharacterServiceImpl characterService;
 
 	@Test
 	void findAllReturnsSummaries() {
-		Character rick = rick();
-		when(characterRepository.findAllSummaries()).thenReturn(List.of(rick));
+		CharacterEntity rick = rickEntity();
+		when(characterJpaRepository.findAllSummaries()).thenReturn(List.of(rick));
 
 		List<Character> result = characterService.findAll();
 
-		assertThat(result).containsExactly(rick);
+		assertThat(result).containsExactly(rick.toSummary());
 	}
 
 	@Test
 	void findByIdReturnsDomain() {
-		Character rick = rick();
-		when(characterRepository.findDetailedById(1)).thenReturn(Optional.of(rick));
+		CharacterEntity rick = rickEntity();
+		when(characterJpaRepository.findDetailedById(1)).thenReturn(Optional.of(rick));
 
 		Character result = characterService.findById(1);
 
-		assertThat(result).isEqualTo(rick);
+		assertThat(result).isEqualTo(rick.toDomain());
 	}
 
 	@Test
 	void findByIdThrowsWhenMissing() {
-		when(characterRepository.findDetailedById(99)).thenReturn(Optional.empty());
+		when(characterJpaRepository.findDetailedById(99)).thenReturn(Optional.empty());
 
 		assertThatThrownBy(() -> characterService.findById(99))
 				.isInstanceOf(ResourceNotFoundException.class)
 				.hasMessage("Character with id '99' not found");
 	}
 
-	private static Character rick() {
-		return new Character(
-				1, "Rick Sanchez", "Alive", "Human", "", "Male",
-				1, "Earth (C-137)", 3, "Citadel of Ricks",
-				"img", List.of(1));
+	private static CharacterEntity rickEntity() {
+		LocationEntity earth = new LocationEntity(1, "Earth (C-137)", "Planet", "Dimension C-137");
+		LocationEntity citadel = new LocationEntity(3, "Citadel of Ricks", "Space station", "unknown");
+		CharacterEntity rick = new CharacterEntity(
+				1, "Rick Sanchez", "Alive", "Human", "", "Male", earth, citadel, "img");
+		rick.getEpisodes().add(new EpisodeEntity(1, "Pilot", "December 2, 2013", "S01E01"));
+		return rick;
 	}
 
 }

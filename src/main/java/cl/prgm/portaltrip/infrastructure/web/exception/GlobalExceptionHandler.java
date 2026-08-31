@@ -3,6 +3,8 @@ package cl.prgm.portaltrip.infrastructure.web.exception;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -18,6 +20,8 @@ import jakarta.validation.ConstraintViolationException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+	private static final Logger LOGGER = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
 	@ExceptionHandler(ResourceNotFoundException.class)
 	public ResponseEntity<ApiResponseDto<Void>> handleNotFound(ResourceNotFoundException exception) {
@@ -70,6 +74,13 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<ApiResponseDto<Void>> handleInvalidState(InvalidReservationStateException exception) {
 		return ResponseEntity.status(HttpStatus.CONFLICT)
 				.body(ApiResponseDto.error(HttpStatus.CONFLICT, exception.getMessage()));
+	}
+
+	@ExceptionHandler(Exception.class)
+	public ResponseEntity<ApiResponseDto<Void>> handleUnexpected(Exception exception) {
+		LOGGER.error("Unhandled server error", exception);
+		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+				.body(ApiResponseDto.error(HttpStatus.INTERNAL_SERVER_ERROR, "Internal server error"));
 	}
 
 }

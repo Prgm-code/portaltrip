@@ -1,89 +1,289 @@
-# PortalTrip API
+# PortalTrip API (`portaltrip`)
 
-REST API built with Spring Boot 4 (Java 26) following a hexagonal architecture on PostgreSQL 17. It serves the interdimensional catalog (Rick and Morty characters, locations and episodes) and manages trip reservations for the planner.
+![Java](https://img.shields.io/badge/Java-26-orange.svg)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1.1-brightgreen.svg)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-blue.svg)
+![Architecture](https://img.shields.io/badge/Architecture-Layered%20Services-blue.svg)
+![Coverage](https://img.shields.io/badge/Coverage-100%25-brightgreen.svg)
+![Status](https://img.shields.io/badge/Build-Passing-success.svg)
 
-Visual system report: https://iy01azmjp64c.postplan.dev
+**PortalTrip API** is a REST service built with **Java 26** and **Spring Boot 4.1.1**. It stores the Rick and Morty catalog in PostgreSQL and manages interdimensional trip reservations, server-side quotes, companion validation and reservation state changes.
 
-![tests](https://img.shields.io/badge/tests-130%20passing-brightgreen) ![coverage](https://img.shields.io/badge/JaCoCo%20coverage-100%25-brightgreen)
+The application follows the same service pattern as NeonPulse. Controllers depend on service interfaces, `ServiceImpl` classes coordinate each use case and access Spring Data JPA repositories directly. Domain records own their invariants and state transition rules.
 
-PortalTrip replaces the frontend's direct consumption of the public Rick and Morty API and its `localStorage` persistence with a dedicated backend split into two blocks:
+[Open the visual system report](https://iy01azmjp64c.postplan.dev)
 
-- **Catalog (read-only)**: 826 characters, 126 locations and 51 episodes, imported once from the public API and seeded into PostgreSQL with their relationships.
-- **Reservations (read/write)**: reservation creation with validation, server-side quoting, and a state-machine lifecycle.
+---
 
-The entire API is an English contract (`/api/v1/characters`, `passengerName`, `CONFIRMED`...); the only Spanish texts are the validation messages shown to the end user and the Swagger documentation summaries.
+## Project structure and architecture
 
-## Hexagonal architecture
-
-Strict ports and adapters: the domain knows nothing about frameworks, the application depends on interfaces (ports), and the infrastructure implements them (adapters).
-
+```text
+portaltrip/
+├── pom.xml                                            # Maven, Spring Boot and JaCoCo
+├── compose.yml                                        # PostgreSQL 17 and seed mounts
+├── .env.example                                       # Local environment template
+├── db/
+│   ├── seed.sql                                       # Rick and Morty catalog
+│   └── app-schema.sql                                 # Reservation tables
+└── src/
+    ├── main/
+    │   ├── java/cl/prgm/portaltrip/
+    │   │   ├── PortaltripApplication.java             # Spring Boot entry point
+    │   │   ├── ServletInitializer.java                # WAR deployment initializer
+    │   │   │
+    │   │   ├── domain/                                # Domain rules and models
+    │   │   │   ├── model/
+    │   │   │   │   ├── Character.java                # Character domain record
+    │   │   │   │   ├── Episode.java                  # Episode domain record
+    │   │   │   │   ├── Location.java                 # Location and insurance rule
+    │   │   │   │   ├── Quote.java                    # Calculated price breakdown
+    │   │   │   │   ├── Reservation.java              # Aggregate and state transitions
+    │   │   │   │   ├── ReservationDraft.java         # Self-validating creation input
+    │   │   │   │   ├── ReservationStatus.java        # Reservation lifecycle states
+    │   │   │   │   ├── RiskLevel.java                # LOW, MEDIUM and HIGH
+    │   │   │   │   └── TripType.java                 # Trip type and price multiplier
+    │   │   │   ├── service/
+    │   │   │   │   └── QuoteCalculator.java          # Quote and risk rules
+    │   │   │   └── exception/
+    │   │   │       ├── DomainValidationException.java
+    │   │   │       ├── InvalidReservationStateException.java
+    │   │   │       └── ResourceNotFoundException.java
+    │   │   │
+    │   │   ├── application/service/                  # Service interfaces and use cases
+    │   │   │   ├── CharacterService.java
+    │   │   │   ├── CharacterServiceImpl.java
+    │   │   │   ├── EpisodeService.java
+    │   │   │   ├── EpisodeServiceImpl.java
+    │   │   │   ├── LocationService.java
+    │   │   │   ├── LocationServiceImpl.java
+    │   │   │   ├── QuoteQuery.java
+    │   │   │   ├── QuoteService.java
+    │   │   │   ├── QuoteServiceImpl.java
+    │   │   │   ├── ReservationService.java
+    │   │   │   └── ReservationServiceImpl.java
+    │   │   │
+    │   │   └── infrastructure/
+    │   │       ├── persistence/                      # JPA entities and repositories
+    │   │       │   ├── CharacterEntity.java
+    │   │       │   ├── EpisodeEntity.java
+    │   │       │   ├── LocationEntity.java
+    │   │       │   ├── ReservationEntity.java
+    │   │       │   └── repository/
+    │   │       │       ├── CharacterJpaRepository.java
+    │   │       │       ├── EpisodeJpaRepository.java
+    │   │       │       ├── LocationJpaRepository.java
+    │   │       │       └── ReservationJpaRepository.java
+    │   │       └── web/                              # REST controllers and DTOs
+    │   │           ├── config/OpenApiConfig.java
+    │   │           ├── controller/
+    │   │           │   ├── CharacterController.java
+    │   │           │   ├── EpisodeController.java
+    │   │           │   ├── HomeController.java
+    │   │           │   ├── LocationController.java
+    │   │           │   ├── QuoteController.java
+    │   │           │   └── ReservationController.java
+    │   │           ├── dto/                          # HTTP request and response records
+    │   │           └── exception/GlobalExceptionHandler.java
+    │   └── resources/
+    │       ├── application.yaml                      # Server, profile and OpenAPI paths
+    │       ├── application-dev.yaml                  # PostgreSQL and JPA configuration
+    │       └── static/index.html                     # Welcome page
+    └── test/java/cl/prgm/portaltrip/                 # 124 automated tests
+        ├── domain/                                   # Model and business-rule tests
+        ├── application/service/                      # Service tests with mocked JPA repositories
+        └── infrastructure/                           # Repository, controller and DTO tests
 ```
-┌────────────────────────────── infrastructure ──────────────────────────────┐
-│ web/                          persistence/                                 │
-│  controllers (REST)            JPA entities + Spring Data repositories      │
-│  dtos + jakarta validation     PersistenceAdapters ─┐                       │
-│  GlobalExceptionHandler                             │ implement             │
-└───────────┬─────────────────────────────────────────┼───────────────────────┘
-            │ uses                                     │
-┌───────────▼──────────── application ────────────────▼───────────────────────┐
-│ port/in  (use cases):  LocationService, CharacterService, EpisodeService,   │
-│                        QuoteService, ReservationService                     │
-│ port/out (repositories): LocationRepository, CharacterRepository,           │
-│                          EpisodeRepository, ReservationRepository           │
-│ service (impls): QuoteServiceImpl, ReservationServiceImpl, ...              │
-└───────────┬──────────────────────────────────────────────────────────────────┘
-            │ uses
-┌───────────▼──────────── domain (plain Java, no annotations) ────────────────┐
-│ model: Character, Location, Episode, Reservation, Quote, TripType,          │
-│        RiskLevel, ReservationStatus (state machine)                         │
-│ service: QuoteCalculator (pricing and risk), ReservationValidator           │
-│ exception: ResourceNotFoundException (404), DomainValidationException (400),│
-│            InvalidReservationStateException (409)                           │
-└──────────────────────────────────────────────────────────────────────────────┘
+
+### Request and persistence flow
+
+```mermaid
+flowchart TD
+    HTTP[HTTP request] --> CONTROLLER[REST Controller]
+    CONTROLLER --> CONTRACT[Service interface]
+    CONTRACT --> SERVICE[ServiceImpl]
+    SERVICE --> DOMAIN[Domain records and business rules]
+    SERVICE --> REPOSITORY[Spring Data JpaRepository]
+    REPOSITORY --> ENTITY[JPA entity mapping]
+    ENTITY --> DATABASE[(PostgreSQL 17)]
 ```
 
-Dependencies always point inwards: application services never import Spring Data or JPA entities; they work only with domain objects.
+`ServiceImpl` is the point where both sides meet. It uses domain objects to make business decisions and JPA repositories to load or store data. The controllers never access JPA, and the domain does not import Spring or Jakarta Persistence.
 
-## Data model (PostgreSQL)
+---
 
-Seven tables in the `rickandmorty` database. Many-to-many relationships are resolved through join tables; the public API `url` fields were removed (only `characters.image` remains, pointing to the remote avatar).
+## Relational database model and table references
 
-| Table | Contents | Relationships |
-| --- | --- | --- |
-| `locations` | 126 locations (name, type, dimension) | — |
-| `characters` | 826 characters (status, species, gender, image) | `origin_id` and `location_id` → `locations` |
-| `episodes` | 51 episodes (air date, code S01E01) | — |
-| `location_residents` | 804 join rows | location ↔ residents |
-| `character_episodes` | 1267 join rows | character ↔ episodes |
-| `reservations` | Reservation: passenger, email, travel date, passenger count, trip type, insurance, quote breakdown, risk, status and timestamps | `destination_id` → `locations` |
-| `reservation_companions` | Join table | reservation ↔ companion characters |
+The catalog contains 826 characters, 126 locations and 51 episodes. Docker loads it once from `db/seed.sql`. The application then creates reservations against that catalog through the schema in `db/app-schema.sql`.
 
-Startup is reproducible on any machine: Docker Compose mounts two scripts into `/docker-entrypoint-initdb.d/`, which the official Postgres image runs only when the data volume is first initialized:
+```mermaid
+erDiagram
+    LOCATIONS ||--o{ CHARACTERS : "origin"
+    LOCATIONS ||--o{ CHARACTERS : "current location"
+    LOCATIONS ||--o{ LOCATION_RESIDENTS : "contains"
+    CHARACTERS ||--o{ LOCATION_RESIDENTS : "appears in"
+    CHARACTERS ||--o{ CHARACTER_EPISODES : "appears in"
+    EPISODES ||--o{ CHARACTER_EPISODES : "contains"
+    LOCATIONS ||--o{ RESERVATIONS : "destination"
+    RESERVATIONS ||--o{ RESERVATION_COMPANIONS : "includes"
+    CHARACTERS ||--o{ RESERVATION_COMPANIONS : "selected as"
 
+    LOCATIONS {
+        integer id PK
+        string name
+        string type
+        string dimension
+    }
+
+    CHARACTERS {
+        integer id PK
+        string name
+        string status
+        string species
+        string type
+        string gender
+        integer origin_id FK
+        integer location_id FK
+        string image
+    }
+
+    EPISODES {
+        integer id PK
+        string name
+        string air_date
+        string episode
+    }
+
+    LOCATION_RESIDENTS {
+        integer location_id PK,FK
+        integer character_id PK,FK
+    }
+
+    CHARACTER_EPISODES {
+        integer character_id PK,FK
+        integer episode_id PK,FK
+    }
+
+    RESERVATIONS {
+        uuid id PK
+        string number UK
+        string status
+        string passenger_name
+        string email
+        integer destination_id FK
+        date travel_date
+        integer passengers
+        string trip_type
+        boolean insurance
+        decimal total
+        string risk
+        timestamp created_at
+        timestamp started_at
+        timestamp completed_at
+    }
+
+    RESERVATION_COMPANIONS {
+        uuid reservation_id PK,FK
+        integer character_id PK,FK
+    }
 ```
-db/seed.sql        → 01-seed.sql        (full catalog: schema + 1003 INSERTs)
-db/app-schema.sql  → 02-app-schema.sql  (reservation tables, empty)
+
+### Foreign keys
+
+1. `characters.origin_id` references `locations.id`.
+2. `characters.location_id` references `locations.id`.
+3. `location_residents` joins locations and their last known residents.
+4. `character_episodes` joins characters and episodes.
+5. `reservations.destination_id` references `locations.id`.
+6. `reservation_companions` joins reservations and selected characters.
+
+---
+
+## Environment variables and Docker setup
+
+Copy the example configuration before starting the application:
+
+```bash
+cp .env.example .env
 ```
 
-## Endpoints
+| Variable | Description | Local default |
+| :--- | :--- | :--- |
+| `SERVER_PORT` | Spring Boot HTTP port | `8080` |
+| `DB_HOST` | PostgreSQL hostname | `localhost` |
+| `DB_PORT` | PostgreSQL port | `5432` |
+| `DB_NAME` | PostgreSQL database | `rickandmorty` |
+| `DB_USER` | PostgreSQL user | `rick` |
+| `DB_PASSWORD` | PostgreSQL password | `morty` |
 
-| Method | Route | Description | Responses |
-| --- | --- | --- | --- |
-| GET | `/api/v1/locations` | Location list (summary) | 200 |
-| GET | `/api/v1/locations/{id}` | Detail with `residentIds` | 200, 404 |
-| GET | `/api/v1/characters` · `/{id}` | Character catalog | 200, 404 |
-| GET | `/api/v1/episodes` · `/{id}` | Episode catalog | 200, 404 |
-| POST | `/api/v1/quotes` | Quotes a trip without creating anything | 200, 400, 404 |
-| POST | `/api/v1/reservations` | Creates a reservation (validates + quotes + persists) | 201, 400 |
-| GET | `/api/v1/reservations` · `/{id}` | Reservation list and detail | 200, 404 |
-| PATCH | `/api/v1/reservations/{id}/start` | CONFIRMED → IN_PROGRESS (sets `startedAt`) | 200, 404, 409 |
-| PATCH | `/api/v1/reservations/{id}/complete` | IN_PROGRESS → COMPLETED (sets `completedAt`) | 200, 404, 409 |
-| PATCH | `/api/v1/reservations/{id}/cancel` | → CANCELLED (not allowed from COMPLETED) | 200, 404, 409 |
-| GET | `/health` | Healthcheck | 200 |
+Start or stop PostgreSQL with Docker Compose:
 
-Interactive documentation at `/swagger-ui.html` (springdoc-openapi).
+```bash
+# Start PostgreSQL and load the catalog on the first initialization
+docker compose up -d
 
-Every `/api/v1` response uses the same envelope. `status` matches the HTTP status code, `message` describes the result, `data` contains the resource or validation errors, and `timestamp` records when the response was created. Jackson omits `data` when it is `null`.
+# Stop the container without deleting its data
+docker compose down
+```
+
+The official PostgreSQL image runs these files only when it creates the data volume:
+
+```text
+db/seed.sql        -> /docker-entrypoint-initdb.d/01-seed.sql
+db/app-schema.sql  -> /docker-entrypoint-initdb.d/02-app-schema.sql
+```
+
+To recreate the database from scratch, run `docker compose down -v && docker compose up -d`. This deletes existing reservations as well as the catalog volume.
+
+---
+
+## How to run the application
+
+```bash
+# Start PostgreSQL
+docker compose up -d
+
+# Run PortalTrip with the Maven wrapper
+./mvnw spring-boot:run
+```
+
+The application starts at `http://localhost:8080`.
+
+- Swagger UI: `http://localhost:8080/swagger-ui.html`
+- OpenAPI JSON: `http://localhost:8080/api-docs`
+- Healthcheck: `http://localhost:8080/health`
+
+---
+
+## Testing and JaCoCo coverage
+
+The suite contains **124 tests**. Maven enforces 100% instruction and branch coverage during `verify`.
+
+```bash
+# Run tests
+./mvnw clean test
+
+# Run tests and enforce the coverage thresholds
+./mvnw clean verify
+```
+
+The HTML report is generated at:
+
+```text
+target/site/jacoco/index.html
+```
+
+Current verified coverage:
+
+| Counter | Covered | Result |
+| :--- | ---: | :--- |
+| Instructions | 2352 / 2352 | 100% |
+| Branches | 90 / 90 | 100% |
+
+---
+
+## REST API documentation
+
+Every `/api/v1` endpoint returns the same response envelope:
 
 ```json
 {
@@ -94,68 +294,187 @@ Every `/api/v1` response uses the same envelope. `status` matches the HTTP statu
 }
 ```
 
+### Catalog endpoints
+
+| Method | Endpoint | Description | Status codes |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/v1/locations` | List location summaries | `200 OK` |
+| `GET` | `/api/v1/locations/{id}` | Get a location with resident IDs | `200 OK`, `400 Bad Request`, `404 Not Found` |
+| `GET` | `/api/v1/characters` | List character summaries | `200 OK` |
+| `GET` | `/api/v1/characters/{id}` | Get a character with episode IDs | `200 OK`, `400 Bad Request`, `404 Not Found` |
+| `GET` | `/api/v1/episodes` | List episode summaries | `200 OK` |
+| `GET` | `/api/v1/episodes/{id}` | Get an episode with character IDs | `200 OK`, `400 Bad Request`, `404 Not Found` |
+
+### Quote endpoint
+
+| Method | Endpoint | Description | Status codes |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/v1/quotes` | Calculate price and risk without persisting data | `200 OK`, `400 Bad Request`, `404 Not Found` |
+
+Example request:
+
+```json
+{
+  "destinationId": 3,
+  "passengers": 2,
+  "tripType": "exploration",
+  "insurance": false
+}
+```
+
+Example response data:
+
+```json
+{
+  "basePrice": 1200,
+  "locationSurcharge": 300,
+  "passengerSurcharge": 216,
+  "tripSurcharge": 360,
+  "insuranceCost": 380,
+  "total": 2456,
+  "risk": "MEDIUM"
+}
+```
+
+### Reservation endpoints
+
+| Method | Endpoint | Description | Status codes |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/v1/reservations` | Validate, quote and create a confirmed reservation | `201 Created`, `400 Bad Request`, `404 Not Found` |
+| `GET` | `/api/v1/reservations` | List reservations from newest to oldest | `200 OK` |
+| `GET` | `/api/v1/reservations/{id}` | Get reservation detail | `200 OK`, `400 Bad Request`, `404 Not Found` |
+| `PATCH` | `/api/v1/reservations/{id}/start` | Move `CONFIRMED` to `IN_PROGRESS` | `200 OK`, `404 Not Found`, `409 Conflict` |
+| `PATCH` | `/api/v1/reservations/{id}/complete` | Move `IN_PROGRESS` to `COMPLETED` | `200 OK`, `404 Not Found`, `409 Conflict` |
+| `PATCH` | `/api/v1/reservations/{id}/cancel` | Cancel a non-terminal reservation | `200 OK`, `404 Not Found`, `409 Conflict` |
+
+Example creation request:
+
+```json
+{
+  "passengerName": "Morty Smith",
+  "email": "morty@example.com",
+  "destinationId": 1,
+  "travelDate": "2026-12-20",
+  "passengers": 2,
+  "companionIds": [1, 2],
+  "tripType": "exploration",
+  "insurance": true,
+  "comments": "Window seat"
+}
+```
+
+### Error handling
+
+| Scenario | HTTP status | Response message |
+| :--- | :--- | :--- |
+| Resource not found | `404 Not Found` | Identifies the missing resource and ID |
+| Invalid HTTP input | `400 Bad Request` | Lists invalid fields and validation messages |
+| Domain rule violation | `400 Bad Request` | Returns `Validation failed` and the domain errors in `data` |
+| Invalid state transition | `409 Conflict` | Identifies the current and requested reservation states |
+| Unexpected server error | `500 Internal Server Error` | Returns a generic message and logs the exception server-side |
+
+---
+
 ## Business rules
 
-### Quoting (`QuoteCalculator`)
+### Quote calculation
 
 | Concept | Rule |
-| --- | --- |
+| :--- | :--- |
 | Base price | 1200 credits |
-| Trip type | express ×1 · exploration ×1.3 · premium ×1.65 |
-| Extra passengers | +18% of base per additional passenger |
-| Space station | +25% if the location type contains "station" |
-| Insurance | 190 per passenger; **mandatory** (forced) when the dimension is "unknown" |
-| Risk | HIGH with no residents · MEDIUM if dimension "unknown" or <5 residents · LOW otherwise |
+| Trip type | `express` x1, `exploration` x1.3, `premium` x1.65 |
+| Extra passengers | 18% of the base price per additional passenger |
+| Space station | 25% surcharge when the location type contains `station` |
+| Insurance | 190 credits per passenger, mandatory for an unknown dimension |
+| Risk | `HIGH` with no residents, `MEDIUM` for an unknown dimension or fewer than five residents, `LOW` otherwise |
 
-### Reservation validation (`ReservationValidator`)
+### Reservation validation
 
-- Passenger name of at least 3 characters and a valid email format.
-- Existing destination and a future travel date.
-- Between 1 and 8 passengers; at most 3 companions, all with "Alive" status.
-- Interdimensional insurance required for unknown dimensions.
+- `ReservationRequestDto` validates the HTTP request with Jakarta Validation.
+- `ReservationDraft` checks its field invariants when constructed.
+- `Reservation.confirm` checks companion status and destination insurance before creating the aggregate.
+- `ReservationServiceImpl` coordinates repositories, quote calculation and persistence.
 
-### Lifecycle (`ReservationStatus`)
+### Reservation lifecycle
 
-```
-CONFIRMED ──start──▶ IN_PROGRESS ──complete──▶ COMPLETED
-    │                      │
-    └────────cancel────────┴──▶ CANCELLED      (COMPLETED is terminal)
-```
-
-Every illegal transition responds 409, e.g.: `Reservation 'PT-2026-238413' cannot transition from COMPLETED to CANCELLED`.
-
-## Verified end-to-end flow (smoke test)
-
-Sequence executed against the real seeded PostgreSQL:
-
-```
-POST /api/v1/quotes        { destinationId: 3, passengers: 2, tripType: "exploration" }
-  → 200  { status: 200, message: "Quote calculated successfully",
-           data: { basePrice: 1200, locationSurcharge: 300, passengerSurcharge: 216,
-                   tripSurcharge: 360, insuranceCost: 380, total: 2456, risk: "MEDIUM" } }
-           (Citadel of Ricks: space station + unknown dimension → forced insurance)
-
-POST /api/v1/reservations  { passengerName: "Morty Smith", companionIds: [1, 2], ... }
-  → 201  { status: 201, data: { number: "PT-2026-238413", status: "CONFIRMED", quote: { ... } } }
-
-PATCH /api/v1/reservations/{id}/start     → 200  IN_PROGRESS  (startedAt)
-PATCH /api/v1/reservations/{id}/complete  → 200  COMPLETED    (completedAt)
-PATCH /api/v1/reservations/{id}/cancel    → 409  (COMPLETED is terminal)
-POST with an invalid email                → 400  (list of validation errors)
+```mermaid
+stateDiagram-v2
+    [*] --> CONFIRMED
+    CONFIRMED --> IN_PROGRESS: start
+    CONFIRMED --> CANCELLED: cancel
+    IN_PROGRESS --> COMPLETED: complete
+    IN_PROGRESS --> CANCELLED: cancel
+    COMPLETED --> [*]
+    CANCELLED --> [*]
 ```
 
-## Running it
+`COMPLETED` and `CANCELLED` are terminal states. An invalid transition returns `409 Conflict`.
+
+---
+
+## cURL testing guide
 
 ```bash
-docker compose up -d          # PostgreSQL 17 + automatic seed (first run only)
-./mvnw spring-boot:run        # API at http://localhost:8080
-./mvnw verify                 # 130 tests + 100% coverage check
+# 1. Healthcheck
+curl -i http://localhost:8080/health
+
+# 2. List locations
+curl -i http://localhost:8080/api/v1/locations
+
+# 3. Get location detail
+curl -i http://localhost:8080/api/v1/locations/3
+
+# 4. Calculate a quote
+curl -i -X POST http://localhost:8080/api/v1/quotes \
+  -H "Content-Type: application/json" \
+  -d '{
+    "destinationId": 3,
+    "passengers": 2,
+    "tripType": "exploration",
+    "insurance": false
+  }'
+
+# 5. Create a reservation
+curl -i -X POST http://localhost:8080/api/v1/reservations \
+  -H "Content-Type: application/json" \
+  -d '{
+    "passengerName": "Morty Smith",
+    "email": "morty@example.com",
+    "destinationId": 1,
+    "travelDate": "2026-12-20",
+    "passengers": 2,
+    "companionIds": [1, 2],
+    "tripType": "exploration",
+    "insurance": true,
+    "comments": "Window seat"
+  }'
+
+# 6. Start a reservation
+curl -i -X PATCH http://localhost:8080/api/v1/reservations/{id}/start
+
+# 7. Complete a reservation
+curl -i -X PATCH http://localhost:8080/api/v1/reservations/{id}/complete
 ```
 
-> The seed runs only when the volume is first initialized. To rebuild the database: `docker compose down -v && docker compose up -d` (wipes all data, including reservations).
+---
 
-The connection is configured through the environment (see `.env.example`): `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, with defaults matching the local compose setup.
+## Logging
 
-## Next step
+PortalTrip uses Spring Boot's default SLF4J and Logback configuration. Normal application output goes to the console at `INFO` level.
 
-Wire the frontend (Astro, currently pointing at the public Rick and Morty API and persisting to `localStorage`) to this backend: change the HTTP client's base URL, map the status codes (`CONFIRMED`, `LOW`...) to the Spanish labels used by the UI, and replace the store's local persistence with calls to `/api/v1/reservations`.
+`GlobalExceptionHandler` logs unexpected exceptions with their stack traces and returns `Internal server error` to the client. Expected `400`, `404` and `409` responses are not logged as server failures.
+
+Package-specific levels can be configured in `src/main/resources/application.yaml`:
+
+```yaml
+logging:
+  level:
+    root: INFO
+    cl.prgm.portaltrip: DEBUG
+```
+
+---
+
+## Frontend integration
+
+The frontend can replace its direct Rick and Morty API calls with the catalog endpoints and replace `localStorage` persistence with `/api/v1/reservations`. It should map backend values such as `CONFIRMED`, `IN_PROGRESS` and `LOW` to the labels displayed by the interface.

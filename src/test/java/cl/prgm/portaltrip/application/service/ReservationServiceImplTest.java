@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -13,20 +14,20 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import cl.prgm.portaltrip.application.port.out.CharacterRepository;
-import cl.prgm.portaltrip.application.port.out.LocationRepository;
-import cl.prgm.portaltrip.application.port.out.ReservationRepository;
-import cl.prgm.portaltrip.domain.exception.DomainValidationException;
 import cl.prgm.portaltrip.domain.exception.InvalidReservationStateException;
 import cl.prgm.portaltrip.domain.exception.ResourceNotFoundException;
-import cl.prgm.portaltrip.domain.model.Character;
-import cl.prgm.portaltrip.domain.model.Location;
 import cl.prgm.portaltrip.domain.model.Quote;
 import cl.prgm.portaltrip.domain.model.Reservation;
 import cl.prgm.portaltrip.domain.model.ReservationDraft;
 import cl.prgm.portaltrip.domain.model.ReservationStatus;
 import cl.prgm.portaltrip.domain.model.RiskLevel;
 import cl.prgm.portaltrip.domain.model.TripType;
+import cl.prgm.portaltrip.infrastructure.persistence.CharacterEntity;
+import cl.prgm.portaltrip.infrastructure.persistence.LocationEntity;
+import cl.prgm.portaltrip.infrastructure.persistence.ReservationEntity;
+import cl.prgm.portaltrip.infrastructure.persistence.repository.CharacterJpaRepository;
+import cl.prgm.portaltrip.infrastructure.persistence.repository.LocationJpaRepository;
+import cl.prgm.portaltrip.infrastructure.persistence.repository.ReservationJpaRepository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -35,7 +36,6 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -44,22 +44,21 @@ class ReservationServiceImplTest {
 	private static final UUID ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
 
 	@Mock
-	private ReservationRepository reservationRepository;
+	private ReservationJpaRepository reservationJpaRepository;
 
 	@Mock
-	private LocationRepository locationRepository;
+	private LocationJpaRepository locationJpaRepository;
 
 	@Mock
-	private CharacterRepository characterRepository;
+	private CharacterJpaRepository characterJpaRepository;
 
 	@InjectMocks
 	private ReservationServiceImpl reservationService;
 
 	@Test
 	void createPersistsConfirmedReservation() {
-		stubCatalog();
-		when(reservationRepository.existsByNumber(anyString())).thenReturn(false);
-		when(reservationRepository.save(any(Reservation.class))).thenAnswer(invocation -> invocation.getArgument(0));
+		stubCatalogAndSave();
+		when(reservationJpaRepository.existsByNumber(anyString())).thenReturn(false);
 
 		Reservation result = reservationService.create(draft());
 
@@ -75,45 +74,18 @@ class ReservationServiceImplTest {
 
 	@Test
 	void createRetriesWhenNumberCollides() {
-		stubCatalog();
-		when(reservationRepository.existsByNumber(anyString())).thenReturn(true, false);
-		when(reservationRepository.save(any(Reservation.class))).thenAnswer(invocation -> invocation.getArgument(0));
+		stubCatalogAndSave();
+		when(reservationJpaRepository.existsByNumber(anyString())).thenReturn(true, false);
 
 		Reservation result = reservationService.create(draft());
 
 		assertThat(result.status()).isEqualTo(ReservationStatus.CONFIRMED);
-		verify(reservationRepository, times(2)).existsByNumber(anyString());
-	}
-
-	@Test
-	void createRejectsInvalidDraft() {
-		stubCatalog();
-		ReservationDraft invalid = new ReservationDraft(
-				"Rick Sanchez", "not-an-email", 1, LocalDate.now().plusDays(1),
-				2, List.of(2), TripType.EXPRESS, false, "");
-
-		assertThatThrownBy(() -> reservationService.create(invalid))
-				.isInstanceOf(DomainValidationException.class)
-				.hasMessageContaining("Ingresa un correo electrónico válido.");
-		verify(reservationRepository, never()).save(any());
-	}
-
-	@Test
-	void createRejectsMissingDestinationId() {
-		ReservationDraft invalid = new ReservationDraft(
-				"Rick Sanchez", "rick@sanchez.dev", null, LocalDate.now().plusDays(1),
-				2, List.of(), TripType.EXPRESS, false, "");
-		when(characterRepository.findAllByIds(List.of())).thenReturn(List.of());
-
-		assertThatThrownBy(() -> reservationService.create(invalid))
-				.isInstanceOf(DomainValidationException.class)
-				.hasMessageContaining("Selecciona un destino.");
-		verifyNoInteractions(locationRepository);
+		verify(reservationJpaRepository, times(2)).existsByNumber(anyString());
 	}
 
 	@Test
 	void createThrowsWhenDestinationNotFound() {
-		when(locationRepository.findDetailedById(1)).thenReturn(Optional.empty());
+		when(locationJpaRepository.findDetailedById(1)).thenReturn(Optional.empty());
 
 		assertThatThrownBy(() -> reservationService.create(draft()))
 				.isInstanceOf(ResourceNotFoundException.class)
@@ -121,24 +93,24 @@ class ReservationServiceImplTest {
 	}
 
 	@Test
-	void findAllDelegatesToRepository() {
-		Reservation reservation = reservation(ReservationStatus.CONFIRMED);
-		when(reservationRepository.findAll()).thenReturn(List.of(reservation));
+	void findAllMapsJpaEntities() {
+		ReservationEntity entity = entity(ReservationStatus.CONFIRMED);
+		when(reservationJpaRepository.findAllByOrderByCreatedAtDesc()).thenReturn(List.of(entity));
 
-		assertThat(reservationService.findAll()).containsExactly(reservation);
+		assertThat(reservationService.findAll()).containsExactly(entity.toDomain());
 	}
 
 	@Test
 	void findByIdReturnsReservation() {
-		Reservation reservation = reservation(ReservationStatus.CONFIRMED);
-		when(reservationRepository.findById(ID)).thenReturn(Optional.of(reservation));
+		ReservationEntity entity = entity(ReservationStatus.CONFIRMED);
+		when(reservationJpaRepository.findDetailedById(ID)).thenReturn(Optional.of(entity));
 
-		assertThat(reservationService.findById(ID)).isEqualTo(reservation);
+		assertThat(reservationService.findById(ID)).isEqualTo(entity.toDomain());
 	}
 
 	@Test
 	void findByIdThrowsWhenMissing() {
-		when(reservationRepository.findById(ID)).thenReturn(Optional.empty());
+		when(reservationJpaRepository.findDetailedById(ID)).thenReturn(Optional.empty());
 
 		assertThatThrownBy(() -> reservationService.findById(ID))
 				.isInstanceOf(ResourceNotFoundException.class)
@@ -147,8 +119,7 @@ class ReservationServiceImplTest {
 
 	@Test
 	void startMovesReservationToInProgress() {
-		when(reservationRepository.findById(ID)).thenReturn(Optional.of(reservation(ReservationStatus.CONFIRMED)));
-		when(reservationRepository.save(any(Reservation.class))).thenAnswer(invocation -> invocation.getArgument(0));
+		stubExistingAndSave(ReservationStatus.CONFIRMED);
 
 		Reservation result = reservationService.start(ID);
 
@@ -158,8 +129,7 @@ class ReservationServiceImplTest {
 
 	@Test
 	void completeMovesReservationToCompleted() {
-		when(reservationRepository.findById(ID)).thenReturn(Optional.of(reservation(ReservationStatus.IN_PROGRESS)));
-		when(reservationRepository.save(any(Reservation.class))).thenAnswer(invocation -> invocation.getArgument(0));
+		stubExistingAndSave(ReservationStatus.IN_PROGRESS);
 
 		Reservation result = reservationService.complete(ID);
 
@@ -169,8 +139,7 @@ class ReservationServiceImplTest {
 
 	@Test
 	void cancelMovesReservationToCancelled() {
-		when(reservationRepository.findById(ID)).thenReturn(Optional.of(reservation(ReservationStatus.CONFIRMED)));
-		when(reservationRepository.save(any(Reservation.class))).thenAnswer(invocation -> invocation.getArgument(0));
+		stubExistingAndSave(ReservationStatus.CONFIRMED);
 
 		Reservation result = reservationService.cancel(ID);
 
@@ -179,38 +148,77 @@ class ReservationServiceImplTest {
 
 	@Test
 	void startRejectsIllegalTransition() {
-		when(reservationRepository.findById(ID)).thenReturn(Optional.of(reservation(ReservationStatus.IN_PROGRESS)));
+		when(reservationJpaRepository.findDetailedById(ID))
+				.thenReturn(Optional.of(entity(ReservationStatus.IN_PROGRESS)));
 
 		assertThatThrownBy(() -> reservationService.start(ID))
 				.isInstanceOf(InvalidReservationStateException.class);
-		verify(reservationRepository, never()).save(any());
+		verify(reservationJpaRepository, never()).save(any());
 	}
 
 	@Test
 	void completeRejectsIllegalTransition() {
-		when(reservationRepository.findById(ID)).thenReturn(Optional.of(reservation(ReservationStatus.CONFIRMED)));
+		when(reservationJpaRepository.findDetailedById(ID))
+				.thenReturn(Optional.of(entity(ReservationStatus.CONFIRMED)));
 
 		assertThatThrownBy(() -> reservationService.complete(ID))
 				.isInstanceOf(InvalidReservationStateException.class);
-		verify(reservationRepository, never()).save(any());
+		verify(reservationJpaRepository, never()).save(any());
 	}
 
 	@Test
 	void cancelRejectsIllegalTransition() {
-		when(reservationRepository.findById(ID)).thenReturn(Optional.of(reservation(ReservationStatus.COMPLETED)));
+		when(reservationJpaRepository.findDetailedById(ID))
+				.thenReturn(Optional.of(entity(ReservationStatus.COMPLETED)));
 
 		assertThatThrownBy(() -> reservationService.cancel(ID))
 				.isInstanceOf(InvalidReservationStateException.class);
-		verify(reservationRepository, never()).save(any());
+		verify(reservationJpaRepository, never()).save(any());
 	}
 
-	private void stubCatalog() {
-		Location destination = new Location(1, "Earth (C-137)", "Planet", "Dimension C-137", List.of(1, 2, 3, 4, 5));
-		Character morty = new Character(
+	private void stubCatalogAndSave() {
+		LocationEntity destination = destinationEntity();
+		CharacterEntity morty = mortyEntity(destination);
+		when(locationJpaRepository.findDetailedById(1)).thenReturn(Optional.of(destination));
+		when(locationJpaRepository.getReferenceById(1)).thenReturn(destination);
+		when(characterJpaRepository.findAllById(List.of(2))).thenReturn(List.of(morty));
+		when(reservationJpaRepository.save(any(ReservationEntity.class)))
+				.thenAnswer(invocation -> invocation.getArgument(0));
+	}
+
+	private void stubExistingAndSave(ReservationStatus status) {
+		LocationEntity destination = destinationEntity();
+		CharacterEntity morty = mortyEntity(destination);
+		when(reservationJpaRepository.findDetailedById(ID))
+				.thenReturn(Optional.of(ReservationEntity.fromDomain(
+						reservation(status), destination, Set.of(morty))));
+		when(locationJpaRepository.getReferenceById(1)).thenReturn(destination);
+		when(characterJpaRepository.findAllById(List.of(2))).thenReturn(List.of(morty));
+		when(reservationJpaRepository.save(any(ReservationEntity.class)))
+				.thenAnswer(invocation -> invocation.getArgument(0));
+	}
+
+	private static ReservationEntity entity(ReservationStatus status) {
+		LocationEntity destination = destinationEntity();
+		return ReservationEntity.fromDomain(
+				reservation(status), destination, Set.of(mortyEntity(destination)));
+	}
+
+	private static LocationEntity destinationEntity() {
+		LocationEntity destination = new LocationEntity(
+				1, "Earth (C-137)", "Planet", "Dimension C-137");
+		for (int id = 1; id <= 5; id++) {
+			destination.getResidents().add(new CharacterEntity(
+					id, "Resident " + id, "Alive", "Human", "", "Unknown",
+					destination, destination, "img"));
+		}
+		return destination;
+	}
+
+	private static CharacterEntity mortyEntity(LocationEntity destination) {
+		return new CharacterEntity(
 				2, "Morty Smith", "Alive", "Human", "", "Male",
-				1, "Earth (C-137)", 1, "Earth (C-137)", "img", List.of());
-		when(locationRepository.findDetailedById(1)).thenReturn(Optional.of(destination));
-		when(characterRepository.findAllByIds(List.of(2))).thenReturn(List.of(morty));
+				destination, destination, "img");
 	}
 
 	private static ReservationDraft draft() {

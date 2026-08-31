@@ -10,8 +10,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import cl.prgm.portaltrip.application.port.in.QuoteQuery;
-import cl.prgm.portaltrip.application.port.in.QuoteService;
+import cl.prgm.portaltrip.application.service.QuoteQuery;
+import cl.prgm.portaltrip.application.service.QuoteService;
 import cl.prgm.portaltrip.domain.exception.ResourceNotFoundException;
 import cl.prgm.portaltrip.domain.model.Quote;
 import cl.prgm.portaltrip.domain.model.RiskLevel;

@@ -101,14 +101,14 @@ class GlobalExceptionHandlerTest {
 
 	@Test
 	void mapsDomainValidationTo400WithErrors() {
-		DomainValidationException exception = new DomainValidationException(List.of("error uno", "error dos"));
+		DomainValidationException exception = new DomainValidationException(List.of("first error", "second error"));
 
 		ResponseEntity<ApiResponseDto<List<String>>> response = handler.handleDomainValidation(exception);
 
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
 		assertThat(response.getBody().status()).isEqualTo(400);
 		assertThat(response.getBody().message()).isEqualTo("Validation failed");
-		assertThat(response.getBody().data()).containsExactly("error uno", "error dos");
+		assertThat(response.getBody().data()).containsExactly("first error", "second error");
 	}
 
 	@Test
@@ -121,6 +121,17 @@ class GlobalExceptionHandlerTest {
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
 		assertThat(response.getBody().status()).isEqualTo(409);
 		assertThat(response.getBody().message()).contains("cannot transition from COMPLETED to CANCELLED");
+	}
+
+	@Test
+	void mapsUnexpectedExceptionTo500() {
+		ResponseEntity<ApiResponseDto<Void>> response = handler.handleUnexpected(
+				new IllegalStateException("database unavailable"));
+
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+		assertThat(response.getBody().status()).isEqualTo(500);
+		assertThat(response.getBody().message()).isEqualTo("Internal server error");
+		assertThat(response.getBody().data()).isNull();
 	}
 
 	private static MethodParameter methodParameter() {

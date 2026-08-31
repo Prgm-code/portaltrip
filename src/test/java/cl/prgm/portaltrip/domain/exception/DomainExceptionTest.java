@@ -17,10 +17,10 @@ class DomainExceptionTest {
 
 	@Test
 	void domainValidationCarriesErrorList() {
-		DomainValidationException exception = new DomainValidationException(List.of("error uno", "error dos"));
+		DomainValidationException exception = new DomainValidationException(List.of("first error", "second error"));
 
-		assertThat(exception.errors()).containsExactly("error uno", "error dos");
-		assertThat(exception.getMessage()).isEqualTo("error uno; error dos");
+		assertThat(exception.errors()).containsExactly("first error", "second error");
+		assertThat(exception.getMessage()).isEqualTo("first error; second error");
 	}
 
 	@Test

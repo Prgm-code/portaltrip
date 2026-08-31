@@ -9,7 +9,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import cl.prgm.portaltrip.application.port.in.LocationService;
+import cl.prgm.portaltrip.application.service.LocationService;
 import cl.prgm.portaltrip.domain.exception.ResourceNotFoundException;
 import cl.prgm.portaltrip.domain.model.Location;
 import cl.prgm.portaltrip.infrastructure.web.exception.GlobalExceptionHandler;

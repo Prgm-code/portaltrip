@@ -35,7 +35,7 @@ class ReservationDtoTest {
 	void requestMapsToDraft() {
 		ReservationRequestDto request = new ReservationRequestDto(
 				"Rick Sanchez", "rick@sanchez.dev", 1, LocalDate.of(2099, 1, 1),
-				2, List.of(2), "premium", true, "portal estable");
+				2, List.of(2), "premium", true, "stable portal");
 
 		ReservationDraft draft = request.toDraft();
 
@@ -47,7 +47,7 @@ class ReservationDtoTest {
 		assertThat(draft.companionIds()).containsExactly(2);
 		assertThat(draft.tripType()).isEqualTo(TripType.PREMIUM);
 		assertThat(draft.insurance()).isTrue();
-		assertThat(draft.comments()).isEqualTo("portal estable");
+		assertThat(draft.comments()).isEqualTo("stable portal");
 	}
 
 	@Test
@@ -71,7 +71,7 @@ class ReservationDtoTest {
 		assertThat(dto.companions()).containsExactly(new CompanionDto(2, "Morty Smith", "img-morty"));
 		assertThat(dto.tripType()).isEqualTo("express");
 		assertThat(dto.insurance()).isTrue();
-		assertThat(dto.comments()).isEqualTo("portal estable");
+		assertThat(dto.comments()).isEqualTo("stable portal");
 		assertThat(dto.quote().total()).isEqualByComparingTo(new BigDecimal("1776.00"));
 		assertThat(dto.quote().risk()).isEqualTo(RiskLevel.LOW);
 		assertThat(dto.createdAt()).isEqualTo(OffsetDateTime.parse("2026-01-01T10:00:00Z"));
@@ -100,7 +100,7 @@ class ReservationDtoTest {
 				List.of(2),
 				TripType.EXPRESS,
 				true,
-				"portal estable",
+				"stable portal",
 				quote,
 				OffsetDateTime.parse("2026-01-01T10:00:00Z"),
 				null,

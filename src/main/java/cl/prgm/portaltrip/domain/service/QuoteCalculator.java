@@ -7,7 +7,7 @@ import cl.prgm.portaltrip.domain.model.RiskLevel;
 import cl.prgm.portaltrip.domain.model.TripType;
 
 /**
- * Reglas de cotización portadas de travelRules.ts del frontend.
+ * Quote rules are the same as the ones in travelRules.ts of the frontend.
  */
 public class QuoteCalculator {
 

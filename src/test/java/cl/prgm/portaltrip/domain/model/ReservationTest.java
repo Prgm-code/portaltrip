@@ -8,6 +8,7 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
+import cl.prgm.portaltrip.domain.exception.DomainValidationException;
 import cl.prgm.portaltrip.domain.exception.InvalidReservationStateException;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -34,11 +35,48 @@ class ReservationTest {
 		assertThat(reservation.companionIds()).containsExactly(2);
 		assertThat(reservation.tripType()).isEqualTo(TripType.EXPLORATION);
 		assertThat(reservation.insurance()).isTrue();
-		assertThat(reservation.comments()).isEqualTo("portal estable");
+		assertThat(reservation.comments()).isEqualTo("stable portal");
 		assertThat(reservation.quote().total()).isEqualByComparingTo(new BigDecimal("2456.00"));
 		assertThat(reservation.createdAt()).isEqualTo(CREATED);
 		assertThat(reservation.startedAt()).isNull();
 		assertThat(reservation.completedAt()).isNull();
+	}
+
+	@Test
+	void confirmCreatesAConfirmedReservation() {
+		ReservationDraft draft = draft(false);
+		Location destination = destination("Dimension C-137");
+		List<Character> companions = List.of(companion("Alive"));
+
+		Reservation reservation = Reservation.confirm(draft, destination, companions, quote(), ID,
+				"PT-2026-000001", CREATED);
+
+		assertThat(reservation.status()).isEqualTo(ReservationStatus.CONFIRMED);
+		assertThat(reservation.destinationId()).isEqualTo(destination.id());
+		assertThat(reservation.companionIds()).containsExactly(2);
+		assertThat(reservation.createdAt()).isEqualTo(CREATED);
+	}
+
+	@Test
+	void confirmRejectsDeadCompanions() {
+		assertThatThrownBy(() -> Reservation.confirm(
+				draft(false), destination("Dimension C-137"), List.of(companion("Dead")), quote(), ID,
+				"PT-2026-000001", CREATED))
+				.isInstanceOf(DomainValidationException.class)
+				.hasMessage("Every selected companion must be alive.");
+	}
+
+	@Test
+	void confirmRequiresInsuranceForUnknownDimensions() {
+		Location destination = destination("unknown");
+
+		assertThatThrownBy(() -> Reservation.confirm(
+				draft(false), destination, List.of(), quote(), ID, "PT-2026-000001", CREATED))
+				.isInstanceOf(DomainValidationException.class)
+				.hasMessage("Destinations in an unknown dimension require interdimensional insurance.");
+		assertThat(Reservation.confirm(
+				draft(true), destination, List.of(), quote(), ID, "PT-2026-000001", CREATED).insurance())
+				.isTrue();
 	}
 
 	@Test
@@ -107,14 +145,6 @@ class ReservationTest {
 	}
 
 	private static Reservation reservation(ReservationStatus status) {
-		Quote quote = new Quote(
-				new BigDecimal("1200"),
-				new BigDecimal("300.00"),
-				new BigDecimal("216.00"),
-				new BigDecimal("360.00"),
-				new BigDecimal("380"),
-				new BigDecimal("2456.00"),
-				RiskLevel.MEDIUM);
 		return new Reservation(
 				ID,
 				"PT-2026-000001",
@@ -127,11 +157,45 @@ class ReservationTest {
 				List.of(2),
 				TripType.EXPLORATION,
 				true,
-				"portal estable",
-				quote,
+				"stable portal",
+				quote(),
 				CREATED,
 				null,
 				null);
+	}
+
+	private static ReservationDraft draft(boolean insurance) {
+		return new ReservationDraft(
+				"Rick Sanchez",
+				"rick@sanchez.dev",
+				1,
+				LocalDate.now().plusDays(1),
+				2,
+				List.of(2),
+				TripType.EXPLORATION,
+				insurance,
+				"stable portal");
+	}
+
+	private static Quote quote() {
+		return new Quote(
+				new BigDecimal("1200"),
+				new BigDecimal("300.00"),
+				new BigDecimal("216.00"),
+				new BigDecimal("360.00"),
+				new BigDecimal("380"),
+				new BigDecimal("2456.00"),
+				RiskLevel.MEDIUM);
+	}
+
+	private static Location destination(String dimension) {
+		return new Location(1, "Earth (C-137)", "Planet", dimension, List.of(1, 2, 3));
+	}
+
+	private static Character companion(String status) {
+		return new Character(
+				2, "Morty Smith", status, "Human", "", "Male",
+				1, "Earth (C-137)", 1, "Earth (C-137)", "img", List.of());
 	}
 
 }

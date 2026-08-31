@@ -15,13 +15,28 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 public record ReservationRequestDto(
-		@NotBlank String passengerName,
-		@NotBlank @Email String email,
-		@NotNull @Min(1) Integer destinationId,
-		@NotNull @Future LocalDate travelDate,
-		@Min(1) @Max(8) int passengers,
-		@Size(max = 3) List<Integer> companionIds,
-		@NotBlank @Pattern(regexp = "express|exploration|premium") String tripType,
+		@NotBlank(message = "Passenger name is required")
+		@Size(min = 3, message = "Passenger name must have at least three characters")
+		String passengerName,
+		@NotBlank(message = "Email is required")
+		@Email(message = "Email must have a valid format")
+		String email,
+		@NotNull(message = "Destination is required")
+		@Min(value = 1, message = "Destination must be a positive ID")
+		Integer destinationId,
+		@NotNull(message = "Travel date is required")
+		@Future(message = "Travel date must be in the future")
+		LocalDate travelDate,
+		@Min(value = 1, message = "At least one passenger is required")
+		@Max(value = 8, message = "A reservation supports at most eight passengers")
+		int passengers,
+		@Size(max = 3, message = "A reservation supports at most three companions")
+		List<Integer> companionIds,
+		@NotBlank(message = "Trip type is required")
+		@Pattern(
+				regexp = "express|exploration|premium",
+				message = "Trip type must be express, exploration, or premium")
+		String tripType,
 		boolean insurance,
 		String comments) {
 

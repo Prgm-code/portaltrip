@@ -1,4 +1,4 @@
-package cl.prgm.portaltrip.application.port.in;
+package cl.prgm.portaltrip.application.service;
 
 import cl.prgm.portaltrip.domain.model.Quote;
 

@@ -1,4 +1,4 @@
-package cl.prgm.portaltrip.application.port.in;
+package cl.prgm.portaltrip.application.service;
 
 import java.util.List;
 import java.util.UUID;

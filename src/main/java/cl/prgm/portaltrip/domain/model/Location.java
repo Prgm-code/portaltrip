@@ -8,4 +8,8 @@ public record Location(
 		String type,
 		String dimension,
 		List<Integer> residentIds) {
+
+	public boolean requiresInterdimensionalInsurance() {
+		return "unknown".equalsIgnoreCase(dimension);
+	}
 }
