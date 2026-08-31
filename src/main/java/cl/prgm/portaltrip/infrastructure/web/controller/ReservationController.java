@@ -69,6 +69,11 @@ public class ReservationController {
 				content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
 						schema = @Schema(implementation = ApiResponseDto.class))),
 		@ApiResponse(
+				responseCode = "422",
+				description = "Reservation violates a business rule",
+				content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+						schema = @Schema(implementation = ApiResponseDto.class))),
+		@ApiResponse(
 				responseCode = "500",
 				description = "Internal server error",
 				content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,

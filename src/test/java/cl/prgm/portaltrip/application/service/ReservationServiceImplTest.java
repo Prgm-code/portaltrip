@@ -93,6 +93,17 @@ class ReservationServiceImplTest {
 	}
 
 	@Test
+	void createThrowsWhenCompanionNotFound() {
+		when(locationJpaRepository.findDetailedById(1)).thenReturn(Optional.of(destinationEntity()));
+		when(characterJpaRepository.findAllById(List.of(2))).thenReturn(List.of());
+
+		assertThatThrownBy(() -> reservationService.create(draft()))
+				.isInstanceOf(ResourceNotFoundException.class)
+				.hasMessage("Character with id '2' not found");
+		verify(reservationJpaRepository, never()).save(any());
+	}
+
+	@Test
 	void findAllMapsJpaEntities() {
 		ReservationEntity entity = entity(ReservationStatus.CONFIRMED);
 		when(reservationJpaRepository.findAllByOrderByCreatedAtDesc()).thenReturn(List.of(entity));

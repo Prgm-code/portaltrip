@@ -1,0 +1,19 @@
+meta {
+  name: Complete reservation
+  type: http
+  seq: 7
+  tags: [
+    smoke
+  ]
+}
+
+patch {
+  url: {{baseUrl}}/api/v1/reservations/{{reservationId}}/complete
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body.data.status: eq COMPLETED
+}

@@ -22,6 +22,7 @@ portaltrip/
 ├── pom.xml                                            # Maven, Spring Boot and JaCoCo
 ├── compose.yml                                        # PostgreSQL 17 and seed mounts
 ├── .env.example                                       # Local environment template
+├── bruno/                                             # Executable REST contract collection
 ├── db/
 │   ├── seed.sql                                       # Rick and Morty catalog
 │   └── app-schema.sql                                 # Reservation tables
@@ -85,10 +86,11 @@ portaltrip/
     │   │           ├── dto/                          # HTTP request and response records
     │   │           └── exception/GlobalExceptionHandler.java
     │   └── resources/
-    │       ├── application.yaml                      # Server, profile and OpenAPI paths
-    │       ├── application-dev.yaml                  # PostgreSQL and JPA configuration
+    │       ├── application.yaml                      # Safe defaults and dev profile selection
+    │       ├── application-dev.yaml                  # PostgreSQL, JPA and enabled OpenAPI
+    │       ├── application-prod.yaml                 # Validated schema and disabled OpenAPI
     │       └── static/index.html                     # Welcome page
-    └── test/java/cl/prgm/portaltrip/                 # 124 automated tests
+    └── test/java/cl/prgm/portaltrip/                 # 129 automated tests
         ├── domain/                                   # Model and business-rule tests
         ├── application/service/                      # Service tests with mocked JPA repositories
         └── infrastructure/                           # Repository, controller and DTO tests
@@ -252,11 +254,20 @@ The application starts at `http://localhost:8080`.
 - OpenAPI JSON: `http://localhost:8080/api-docs`
 - Healthcheck: `http://localhost:8080/health`
 
+The default local profile is `dev`; it enables Swagger UI and OpenAPI. Production requires explicit database variables, validates the existing schema and disables both documentation endpoints:
+
+```bash
+SPRING_PROFILES_ACTIVE=prod \
+DB_HOST=localhost DB_PORT=5432 DB_NAME=rickandmorty \
+DB_USER=rick DB_PASSWORD=morty \
+./mvnw spring-boot:run
+```
+
 ---
 
 ## Testing and JaCoCo coverage
 
-The suite contains **124 tests**. Maven enforces 100% instruction and branch coverage during `verify`.
+The suite contains **129 tests**. Maven generates the console and HTML reports during `test`, and enforces 100% instruction and branch coverage during `verify`.
 
 ```bash
 # Run tests
@@ -276,8 +287,12 @@ Current verified coverage:
 
 | Counter | Covered | Result |
 | :--- | ---: | :--- |
-| Instructions | 2352 / 2352 | 100% |
-| Branches | 90 / 90 | 100% |
+| Instructions | 2390 / 2390 | 100% |
+| Branches | 92 / 92 | 100% |
+| Lines | 500 / 500 | 100% |
+| Methods | 157 / 157 | 100% |
+
+GitHub Actions executes `./mvnw -B clean verify` on pull requests and pushes to `main`. It retains the Surefire and JaCoCo artifacts for 14 days and publishes the successful `main` report at [prgm-code.github.io/portaltrip](https://prgm-code.github.io/portaltrip/).
 
 ---
 
@@ -340,7 +355,7 @@ Example response data:
 
 | Method | Endpoint | Description | Status codes |
 | :--- | :--- | :--- | :--- |
-| `POST` | `/api/v1/reservations` | Validate, quote and create a confirmed reservation | `201 Created`, `400 Bad Request`, `404 Not Found` |
+| `POST` | `/api/v1/reservations` | Validate, quote and create a confirmed reservation | `201 Created`, `400 Bad Request`, `404 Not Found`, `422 Unprocessable Entity` |
 | `GET` | `/api/v1/reservations` | List reservations from newest to oldest | `200 OK` |
 | `GET` | `/api/v1/reservations/{id}` | Get reservation detail | `200 OK`, `400 Bad Request`, `404 Not Found` |
 | `PATCH` | `/api/v1/reservations/{id}/start` | Move `CONFIRMED` to `IN_PROGRESS` | `200 OK`, `404 Not Found`, `409 Conflict` |
@@ -354,7 +369,7 @@ Example creation request:
   "passengerName": "Morty Smith",
   "email": "morty@example.com",
   "destinationId": 1,
-  "travelDate": "2026-12-20",
+  "travelDate": "2099-12-20",
   "passengers": 2,
   "companionIds": [1, 2],
   "tripType": "exploration",
@@ -369,7 +384,7 @@ Example creation request:
 | :--- | :--- | :--- |
 | Resource not found | `404 Not Found` | Identifies the missing resource and ID |
 | Invalid HTTP input | `400 Bad Request` | Lists invalid fields and validation messages |
-| Domain rule violation | `400 Bad Request` | Returns `Validation failed` and the domain errors in `data` |
+| Domain rule violation | `422 Unprocessable Entity` | Returns `Validation failed` and the domain errors in `data` |
 | Invalid state transition | `409 Conflict` | Identifies the current and requested reservation states |
 | Unexpected server error | `500 Internal Server Error` | Returns a generic message and logs the exception server-side |
 
@@ -393,7 +408,7 @@ Example creation request:
 - `ReservationRequestDto` validates the HTTP request with Jakarta Validation.
 - `ReservationDraft` checks its field invariants when constructed.
 - `Reservation.confirm` checks companion status and destination insurance before creating the aggregate.
-- `ReservationServiceImpl` coordinates repositories, quote calculation and persistence.
+- `ReservationServiceImpl` verifies that every requested companion exists, then coordinates domain validation, quote calculation and persistence.
 
 ### Reservation lifecycle
 
@@ -441,7 +456,7 @@ curl -i -X POST http://localhost:8080/api/v1/reservations \
     "passengerName": "Morty Smith",
     "email": "morty@example.com",
     "destinationId": 1,
-    "travelDate": "2026-12-20",
+    "travelDate": "2099-12-20",
     "passengers": 2,
     "companionIds": [1, 2],
     "tripType": "exploration",
@@ -458,11 +473,24 @@ curl -i -X PATCH http://localhost:8080/api/v1/reservations/{id}/complete
 
 ---
 
+## Bruno contract collection
+
+Open the `bruno/` directory in Bruno, select the `local` environment and run the collection in sequence. It creates a reservation, stores its generated UUID in memory, advances it to `COMPLETED` and verifies that a later cancellation returns `409 Conflict`.
+
+The same audit can be run from the CLI while the application is listening on port 8080:
+
+```bash
+cd bruno
+bru run --env-file environments/local.bru --bail
+```
+
+---
+
 ## Logging
 
 PortalTrip uses Spring Boot's default SLF4J and Logback configuration. Normal application output goes to the console at `INFO` level.
 
-`GlobalExceptionHandler` logs unexpected exceptions with their stack traces and returns `Internal server error` to the client. Expected `400`, `404` and `409` responses are not logged as server failures.
+`GlobalExceptionHandler` logs unexpected exceptions with their stack traces and returns `Internal server error` to the client. Expected `400`, `404`, `409` and `422` responses are not logged as server failures.
 
 Package-specific levels can be configured in `src/main/resources/application.yaml`:
 

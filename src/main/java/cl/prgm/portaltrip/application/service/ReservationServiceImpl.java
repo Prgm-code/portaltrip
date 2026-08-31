@@ -47,7 +47,17 @@ public class ReservationServiceImpl implements ReservationService {
 		LocationEntity destinationEntity = locationJpaRepository.findDetailedById(draft.destinationId())
 				.orElseThrow(() -> new ResourceNotFoundException("Location", draft.destinationId()));
 		Location destination = destinationEntity.toDomain();
-		List<Character> companions = characterJpaRepository.findAllById(draft.companionIds()).stream()
+		List<CharacterEntity> companionEntities = characterJpaRepository.findAllById(draft.companionIds());
+		List<Integer> foundCompanionIds = companionEntities.stream()
+				.map(CharacterEntity::getId)
+				.toList();
+		draft.companionIds().stream()
+				.filter(id -> !foundCompanionIds.contains(id))
+				.findFirst()
+				.ifPresent(id -> {
+					throw new ResourceNotFoundException("Character", id);
+				});
+		List<Character> companions = companionEntities.stream()
 				.map(CharacterEntity::toSummary)
 				.toList();
 		Quote quote = quoteCalculator.calculate(

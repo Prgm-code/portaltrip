@@ -106,15 +106,15 @@ class ReservationControllerTest {
 	}
 
 	@Test
-	void createReturns400WithDomainErrors() throws Exception {
+	void createReturns422WithDomainErrors() throws Exception {
 		when(reservationService.create(any(ReservationDraft.class)))
 				.thenThrow(new DomainValidationException(List.of("Every selected companion must be alive.")));
 
 		mockMvc.perform(post("/api/v1/reservations")
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(VALID_BODY))
-				.andExpect(status().isBadRequest())
-				.andExpect(jsonPath("$.status").value(400))
+				.andExpect(status().isUnprocessableEntity())
+				.andExpect(jsonPath("$.status").value(422))
 				.andExpect(jsonPath("$.data[0]").value("Every selected companion must be alive."));
 	}
 

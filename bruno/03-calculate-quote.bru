@@ -1,0 +1,33 @@
+meta {
+  name: Calculate quote
+  type: http
+  seq: 3
+  tags: [
+    smoke
+  ]
+}
+
+post {
+  url: {{baseUrl}}/api/v1/quotes
+  body: json
+  auth: none
+}
+
+headers {
+  content-type: application/json
+}
+
+body:json {
+  {
+    "destinationId": 3,
+    "passengers": 2,
+    "tripType": "exploration",
+    "insurance": false
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.status: eq 200
+  res.body.data.total: isNumber
+}

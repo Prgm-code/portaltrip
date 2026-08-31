@@ -100,13 +100,22 @@ class GlobalExceptionHandlerTest {
 	}
 
 	@Test
-	void mapsDomainValidationTo400WithErrors() {
+	void mapsMissingHttpResourceTo404() {
+		ResponseEntity<ApiResponseDto<Void>> response = handler.handleNoResource();
+
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+		assertThat(response.getBody().status()).isEqualTo(404);
+		assertThat(response.getBody().message()).isEqualTo("Resource not found");
+	}
+
+	@Test
+	void mapsDomainValidationTo422WithErrors() {
 		DomainValidationException exception = new DomainValidationException(List.of("first error", "second error"));
 
 		ResponseEntity<ApiResponseDto<List<String>>> response = handler.handleDomainValidation(exception);
 
-		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-		assertThat(response.getBody().status()).isEqualTo(400);
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
+		assertThat(response.getBody().status()).isEqualTo(422);
 		assertThat(response.getBody().message()).isEqualTo("Validation failed");
 		assertThat(response.getBody().data()).containsExactly("first error", "second error");
 	}

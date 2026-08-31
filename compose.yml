@@ -4,11 +4,11 @@ services:
     container_name: portaltrip-db
     restart: unless-stopped
     environment:
-      POSTGRES_DB: rickandmorty
-      POSTGRES_USER: rick
-      POSTGRES_PASSWORD: morty
+      POSTGRES_DB: ${DB_NAME:-rickandmorty}
+      POSTGRES_USER: ${DB_USER:-rick}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-morty}
     ports:
-      - '5432:5432'
+      - '${DB_PORT:-5432}:5432'
     volumes:
       - pgdata:/var/lib/postgresql/data
       # La imagen oficial ejecuta automáticamente los .sql de este directorio
@@ -16,7 +16,7 @@ services:
       - ./db/seed.sql:/docker-entrypoint-initdb.d/01-seed.sql:ro
       - ./db/app-schema.sql:/docker-entrypoint-initdb.d/02-app-schema.sql:ro
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U rick -d rickandmorty']
+      test: ['CMD-SHELL', 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
       interval: 5s
       timeout: 3s
       retries: 10

@@ -1,4 +1,3 @@
--- Seed generado desde https://rickandmortyapi.com/api
 -- Regenerar con: node scripts/fetch-rick-and-morty.mjs
 
 BEGIN;

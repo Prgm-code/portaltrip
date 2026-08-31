@@ -61,6 +61,20 @@ class CharacterControllerTest {
 				.andExpect(jsonPath("$.message").value("Character with id '99' not found"));
 	}
 
+	@Test
+	void unexpectedErrorsDoNotExposeServerDetails() throws Exception {
+		when(characterService.findAll()).thenThrow(new IllegalStateException("database password leaked"));
+
+		mockMvc.perform(get("/api/v1/characters"))
+				.andExpect(status().isInternalServerError())
+				.andExpect(jsonPath("$.status").value(500))
+				.andExpect(jsonPath("$.message").value("Internal server error"))
+				.andExpect(jsonPath("$.data").doesNotExist())
+				.andExpect(jsonPath("$.trace").doesNotExist())
+				.andExpect(jsonPath("$.exception").doesNotExist())
+				.andExpect(jsonPath("$.path").doesNotExist());
+	}
+
 	private static Character rick() {
 		return new Character(
 				1, "Rick Sanchez", "Alive", "Human", "", "Male",

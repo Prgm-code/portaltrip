@@ -11,6 +11,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import cl.prgm.portaltrip.domain.exception.DomainValidationException;
 import cl.prgm.portaltrip.domain.exception.InvalidReservationStateException;
@@ -61,11 +62,17 @@ public class GlobalExceptionHandler {
 						"Invalid value for parameter '" + exception.getName() + "'"));
 	}
 
+	@ExceptionHandler(NoResourceFoundException.class)
+	public ResponseEntity<ApiResponseDto<Void>> handleNoResource() {
+		return ResponseEntity.status(HttpStatus.NOT_FOUND)
+				.body(ApiResponseDto.error(HttpStatus.NOT_FOUND, "Resource not found"));
+	}
+
 	@ExceptionHandler(DomainValidationException.class)
 	public ResponseEntity<ApiResponseDto<List<String>>> handleDomainValidation(DomainValidationException exception) {
-		return ResponseEntity.badRequest()
+		return ResponseEntity.unprocessableEntity()
 				.body(ApiResponseDto.error(
-						HttpStatus.BAD_REQUEST,
+						HttpStatus.UNPROCESSABLE_ENTITY,
 						"Validation failed",
 						exception.errors()));
 	}

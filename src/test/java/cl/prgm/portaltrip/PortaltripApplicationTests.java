@@ -45,15 +45,27 @@ class PortaltripApplicationTests {
 				.andExpect(jsonPath("$.paths['/api/v1/episodes'].get.responses['200']").exists())
 				.andExpect(jsonPath("$.paths['/api/v1/episodes/{id}'].get.responses['404']").exists())
 				.andExpect(jsonPath("$.paths['/api/v1/quotes'].post.responses['400']").exists())
+				.andExpect(jsonPath("$.paths['/api/v1/quotes'].post.requestBody.content['application/json'].schema['$ref']")
+						.value("#/components/schemas/QuoteRequestDto"))
 				.andExpect(jsonPath("$.paths['/api/v1/reservations'].post.responses['201']").exists())
+				.andExpect(jsonPath("$.paths['/api/v1/reservations'].post.responses['422']").exists())
 				.andExpect(jsonPath("$.paths['/api/v1/reservations'].post.responses['201'].content['application/json'].schema").exists())
+				.andExpect(jsonPath("$.paths['/api/v1/reservations'].post.requestBody.content['application/json'].schema['$ref']")
+						.value("#/components/schemas/ReservationRequestDto"))
 				.andExpect(jsonPath("$.paths['/api/v1/reservations'].get.responses['200']").exists())
 				.andExpect(jsonPath("$.paths['/api/v1/reservations/{id}'].get.responses['404']").exists())
 				.andExpect(jsonPath("$.paths['/api/v1/reservations/{id}/cancel'].patch.responses['409']").exists())
 				.andExpect(jsonPath("$.paths['/api/v1/reservations/{id}/start'].patch.responses['409']").exists())
 				.andExpect(jsonPath("$.paths['/api/v1/reservations/{id}/complete'].patch.responses['409']").exists())
 				.andExpect(jsonPath("$.paths['/health'].get.responses['200']").exists())
-				.andExpect(jsonPath("$.paths['/health'].get.summary").value("Check application health"));
+				.andExpect(jsonPath("$.paths['/health'].get.summary").value("Check application health"))
+				.andExpect(jsonPath("$.components.schemas.QuoteRequestDto.description")
+						.value("Input used to calculate a quote without creating a reservation"))
+				.andExpect(jsonPath("$.components.schemas.QuoteRequestDto.properties.tripType.enum[0]").value("express"))
+				.andExpect(jsonPath("$.components.schemas.ReservationRequestDto.properties.passengerName.example")
+						.value("Morty Smith"))
+				.andExpect(jsonPath("$.components.schemas.ReservationResponseDto.properties.status.enum[0]")
+						.value("CONFIRMED"));
 	}
 
 }

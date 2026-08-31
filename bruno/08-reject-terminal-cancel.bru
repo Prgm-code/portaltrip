@@ -1,0 +1,19 @@
+meta {
+  name: Reject cancellation of completed reservation
+  type: http
+  seq: 8
+  tags: [
+    smoke
+  ]
+}
+
+patch {
+  url: {{baseUrl}}/api/v1/reservations/{{reservationId}}/cancel
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 409
+  res.body.status: eq 409
+}

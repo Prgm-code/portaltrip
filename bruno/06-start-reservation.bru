@@ -1,0 +1,19 @@
+meta {
+  name: Start reservation
+  type: http
+  seq: 6
+  tags: [
+    smoke
+  ]
+}
+
+patch {
+  url: {{baseUrl}}/api/v1/reservations/{{reservationId}}/start
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body.data.status: eq IN_PROGRESS
+}
