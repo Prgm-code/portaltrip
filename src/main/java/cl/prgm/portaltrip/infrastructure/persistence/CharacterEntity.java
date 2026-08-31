@@ -48,9 +48,6 @@ public class CharacterEntity {
 	@Column(nullable = false)
 	private String image;
 
-	@Column(nullable = false)
-	private String url;
-
 	@ManyToMany
 	@JoinTable(
 			name = "character_episodes",
@@ -70,8 +67,7 @@ public class CharacterEntity {
 			String gender,
 			LocationEntity origin,
 			LocationEntity location,
-			String image,
-			String url) {
+			String image) {
 		this.id = id;
 		this.name = name;
 		this.status = status;
@@ -81,7 +77,6 @@ public class CharacterEntity {
 		this.origin = origin;
 		this.location = location;
 		this.image = image;
-		this.url = url;
 	}
 
 	public Integer getId() {
@@ -120,10 +115,6 @@ public class CharacterEntity {
 		return image;
 	}
 
-	public String getUrl() {
-		return url;
-	}
-
 	public Set<EpisodeEntity> getEpisodes() {
 		return episodes;
 	}
@@ -153,7 +144,6 @@ public class CharacterEntity {
 				location == null ? null : location.getId(),
 				location == null ? null : location.getName(),
 				image,
-				url,
 				episodeIds);
 	}
 

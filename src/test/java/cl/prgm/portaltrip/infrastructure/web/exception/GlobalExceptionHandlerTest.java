@@ -12,8 +12,11 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
+import cl.prgm.portaltrip.domain.exception.DomainValidationException;
+import cl.prgm.portaltrip.domain.exception.InvalidReservationStateException;
 import cl.prgm.portaltrip.domain.exception.ResourceNotFoundException;
-import cl.prgm.portaltrip.infrastructure.web.dto.ErrorResponse;
+import cl.prgm.portaltrip.domain.model.ReservationStatus;
+import cl.prgm.portaltrip.infrastructure.web.dto.ApiResponseDto;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Path;
@@ -28,11 +31,11 @@ class GlobalExceptionHandlerTest {
 
 	@Test
 	void mapsNotFound() {
-		ResponseEntity<ErrorResponse> response = handler.handleNotFound(
+		ResponseEntity<ApiResponseDto<Void>> response = handler.handleNotFound(
 				new ResourceNotFoundException("Location", 7));
 
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-		assertThat(response.getBody().code()).isEqualTo(404);
+		assertThat(response.getBody().status()).isEqualTo(404);
 		assertThat(response.getBody().message()).contains("Location");
 	}
 
@@ -43,7 +46,7 @@ class GlobalExceptionHandlerTest {
 		MethodArgumentNotValidException exception = new MethodArgumentNotValidException(
 				methodParameter(), bindingResult);
 
-		ResponseEntity<ErrorResponse> response = handler.handleValidation(exception);
+		ResponseEntity<ApiResponseDto<Void>> response = handler.handleValidation(exception);
 
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
 		assertThat(response.getBody().message()).isEqualTo("name: is required");
@@ -55,7 +58,7 @@ class GlobalExceptionHandlerTest {
 		MethodArgumentNotValidException exception = new MethodArgumentNotValidException(
 				methodParameter(), bindingResult);
 
-		ResponseEntity<ErrorResponse> response = handler.handleValidation(exception);
+		ResponseEntity<ApiResponseDto<Void>> response = handler.handleValidation(exception);
 
 		assertThat(response.getBody().message()).isEqualTo("Validation failed");
 	}
@@ -70,7 +73,7 @@ class GlobalExceptionHandlerTest {
 		@SuppressWarnings("unchecked")
 		ConstraintViolation<Object> typed = (ConstraintViolation<Object>) violation;
 
-		ResponseEntity<ErrorResponse> response = handler.handleConstraint(
+		ResponseEntity<ApiResponseDto<Void>> response = handler.handleConstraint(
 				new ConstraintViolationException(Set.of(typed)));
 
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
@@ -79,7 +82,7 @@ class GlobalExceptionHandlerTest {
 
 	@Test
 	void mapsEmptyConstraintViolations() {
-		ResponseEntity<ErrorResponse> response = handler.handleConstraint(
+		ResponseEntity<ApiResponseDto<Void>> response = handler.handleConstraint(
 				new ConstraintViolationException(Set.of()));
 
 		assertThat(response.getBody().message()).isEqualTo("Validation failed");
@@ -90,10 +93,34 @@ class GlobalExceptionHandlerTest {
 		MethodArgumentTypeMismatchException exception = new MethodArgumentTypeMismatchException(
 				"abc", Integer.class, "id", methodParameter(), new NumberFormatException("abc"));
 
-		ResponseEntity<ErrorResponse> response = handler.handleTypeMismatch(exception);
+		ResponseEntity<ApiResponseDto<Void>> response = handler.handleTypeMismatch(exception);
 
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
 		assertThat(response.getBody().message()).isEqualTo("Invalid value for parameter 'id'");
+	}
+
+	@Test
+	void mapsDomainValidationTo400WithErrors() {
+		DomainValidationException exception = new DomainValidationException(List.of("error uno", "error dos"));
+
+		ResponseEntity<ApiResponseDto<List<String>>> response = handler.handleDomainValidation(exception);
+
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+		assertThat(response.getBody().status()).isEqualTo(400);
+		assertThat(response.getBody().message()).isEqualTo("Validation failed");
+		assertThat(response.getBody().data()).containsExactly("error uno", "error dos");
+	}
+
+	@Test
+	void mapsInvalidReservationStateTo409() {
+		InvalidReservationStateException exception = new InvalidReservationStateException(
+				"PT-2026-000001", ReservationStatus.COMPLETED, ReservationStatus.CANCELLED);
+
+		ResponseEntity<ApiResponseDto<Void>> response = handler.handleInvalidState(exception);
+
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+		assertThat(response.getBody().status()).isEqualTo(409);
+		assertThat(response.getBody().message()).contains("cannot transition from COMPLETED to CANCELLED");
 	}
 
 	private static MethodParameter methodParameter() {

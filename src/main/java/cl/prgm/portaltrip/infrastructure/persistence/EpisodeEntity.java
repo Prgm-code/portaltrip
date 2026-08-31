@@ -27,21 +27,17 @@ public class EpisodeEntity {
 	@Column(name = "episode", nullable = false)
 	private String code;
 
-	@Column(nullable = false)
-	private String url;
-
 	@ManyToMany(mappedBy = "episodes")
 	private Set<CharacterEntity> characters = new LinkedHashSet<>();
 
 	protected EpisodeEntity() {
 	}
 
-	public EpisodeEntity(Integer id, String name, String airDate, String code, String url) {
+	public EpisodeEntity(Integer id, String name, String airDate, String code) {
 		this.id = id;
 		this.name = name;
 		this.airDate = airDate;
 		this.code = code;
-		this.url = url;
 	}
 
 	public Integer getId() {
@@ -60,16 +56,8 @@ public class EpisodeEntity {
 		return code;
 	}
 
-	public String getUrl() {
-		return url;
-	}
-
 	public Set<CharacterEntity> getCharacters() {
 		return characters;
-	}
-
-	public Episode toSummary() {
-		return new Episode(id, name, airDate, code, url, List.of());
 	}
 
 	public Episode toDomain() {
@@ -77,7 +65,7 @@ public class EpisodeEntity {
 				.map(CharacterEntity::getId)
 				.sorted()
 				.toList();
-		return new Episode(id, name, airDate, code, url, characterIds);
+		return new Episode(id, name, airDate, code, characterIds);
 	}
 
 }

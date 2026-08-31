@@ -14,7 +14,7 @@ public interface LocationJpaRepository extends JpaRepository<LocationEntity, Int
 	@Query("select distinct l from LocationEntity l left join fetch l.residents where l.id = :id")
 	Optional<LocationEntity> findDetailedById(@Param("id") Integer id);
 
-	@Query("select l from LocationEntity l order by l.id")
+	@Query("select distinct l from LocationEntity l left join fetch l.residents order by l.id")
 	List<LocationEntity> findAllSummaries();
 
 }

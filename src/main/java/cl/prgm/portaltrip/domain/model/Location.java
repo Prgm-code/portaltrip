@@ -7,6 +7,5 @@ public record Location(
 		String name,
 		String type,
 		String dimension,
-		String url,
 		List<Integer> residentIds) {
 }

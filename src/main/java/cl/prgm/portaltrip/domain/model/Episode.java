@@ -7,6 +7,5 @@ public record Episode(
 		String name,
 		String airDate,
 		String code,
-		String url,
 		List<Integer> characterIds) {
 }

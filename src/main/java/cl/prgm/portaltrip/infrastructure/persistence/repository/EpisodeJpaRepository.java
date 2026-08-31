@@ -14,7 +14,7 @@ public interface EpisodeJpaRepository extends JpaRepository<EpisodeEntity, Integ
 	@Query("select distinct e from EpisodeEntity e left join fetch e.characters where e.id = :id")
 	Optional<EpisodeEntity> findDetailedById(@Param("id") Integer id);
 
-	@Query("select e from EpisodeEntity e order by e.id")
+	@Query("select distinct e from EpisodeEntity e left join fetch e.characters order by e.id")
 	List<EpisodeEntity> findAllSummaries();
 
 }

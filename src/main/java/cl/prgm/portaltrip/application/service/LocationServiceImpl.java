@@ -5,32 +5,29 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import cl.prgm.portaltrip.application.port.in.LocationService;
+import cl.prgm.portaltrip.application.port.out.LocationRepository;
 import cl.prgm.portaltrip.domain.exception.ResourceNotFoundException;
 import cl.prgm.portaltrip.domain.model.Location;
-import cl.prgm.portaltrip.infrastructure.persistence.LocationEntity;
-import cl.prgm.portaltrip.infrastructure.persistence.repository.LocationJpaRepository;
 
 @Service
 @Transactional(readOnly = true)
 public class LocationServiceImpl implements LocationService {
 
-	private final LocationJpaRepository locationJpaRepository;
+	private final LocationRepository locationRepository;
 
-	public LocationServiceImpl(LocationJpaRepository locationJpaRepository) {
-		this.locationJpaRepository = locationJpaRepository;
+	public LocationServiceImpl(LocationRepository locationRepository) {
+		this.locationRepository = locationRepository;
 	}
 
 	@Override
 	public List<Location> findAll() {
-		return locationJpaRepository.findAllSummaries().stream()
-				.map(LocationEntity::toSummary)
-				.toList();
+		return locationRepository.findAllSummaries();
 	}
 
 	@Override
 	public Location findById(Integer id) {
-		return locationJpaRepository.findDetailedById(id)
-				.map(LocationEntity::toDomain)
+		return locationRepository.findDetailedById(id)
 				.orElseThrow(() -> new ResourceNotFoundException("Location", id));
 	}
 

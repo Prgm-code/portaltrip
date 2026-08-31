@@ -29,9 +29,6 @@ public class LocationEntity {
 	@Column(nullable = false)
 	private String dimension;
 
-	@Column(nullable = false)
-	private String url;
-
 	@ManyToMany
 	@JoinTable(
 			name = "location_residents",
@@ -42,12 +39,11 @@ public class LocationEntity {
 	protected LocationEntity() {
 	}
 
-	public LocationEntity(Integer id, String name, String type, String dimension, String url) {
+	public LocationEntity(Integer id, String name, String type, String dimension) {
 		this.id = id;
 		this.name = name;
 		this.type = type;
 		this.dimension = dimension;
-		this.url = url;
 	}
 
 	public Integer getId() {
@@ -66,16 +62,8 @@ public class LocationEntity {
 		return dimension;
 	}
 
-	public String getUrl() {
-		return url;
-	}
-
 	public Set<CharacterEntity> getResidents() {
 		return residents;
-	}
-
-	public Location toSummary() {
-		return new Location(id, name, type, dimension, url, List.of());
 	}
 
 	public Location toDomain() {
@@ -83,7 +71,7 @@ public class LocationEntity {
 				.map(CharacterEntity::getId)
 				.sorted()
 				.toList();
-		return new Location(id, name, type, dimension, url, residentIds);
+		return new Location(id, name, type, dimension, residentIds);
 	}
 
 }

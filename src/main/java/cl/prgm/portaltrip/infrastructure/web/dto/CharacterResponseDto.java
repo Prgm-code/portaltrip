@@ -14,7 +14,6 @@ public record CharacterResponseDto(
 		NamedRefDto origin,
 		NamedRefDto location,
 		String image,
-		String url,
 		List<Integer> episodeIds) {
 
 	public static CharacterResponseDto from(Character character) {
@@ -28,7 +27,6 @@ public record CharacterResponseDto(
 				toRef(character.originId(), character.originName()),
 				toRef(character.locationId(), character.locationName()),
 				character.image(),
-				character.url(),
 				character.episodeIds());
 	}
 

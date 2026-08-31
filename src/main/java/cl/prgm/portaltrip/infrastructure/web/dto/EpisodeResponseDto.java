@@ -9,7 +9,6 @@ public record EpisodeResponseDto(
 		String name,
 		String airDate,
 		String code,
-		String url,
 		List<Integer> characterIds) {
 
 	public static EpisodeResponseDto from(Episode episode) {
@@ -18,7 +17,6 @@ public record EpisodeResponseDto(
 				episode.name(),
 				episode.airDate(),
 				episode.code(),
-				episode.url(),
 				episode.characterIds());
 	}
 

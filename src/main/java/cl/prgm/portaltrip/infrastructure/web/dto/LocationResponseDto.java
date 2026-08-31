@@ -9,7 +9,6 @@ public record LocationResponseDto(
 		String name,
 		String type,
 		String dimension,
-		String url,
 		List<Integer> residentIds) {
 
 	public static LocationResponseDto from(Location location) {
@@ -18,7 +17,6 @@ public record LocationResponseDto(
 				location.name(),
 				location.type(),
 				location.dimension(),
-				location.url(),
 				location.residentIds());
 	}
 

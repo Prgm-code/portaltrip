@@ -9,7 +9,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import cl.prgm.portaltrip.application.service.EpisodeService;
+import cl.prgm.portaltrip.application.port.in.EpisodeService;
 import cl.prgm.portaltrip.domain.exception.ResourceNotFoundException;
 import cl.prgm.portaltrip.domain.model.Episode;
 import cl.prgm.portaltrip.infrastructure.web.exception.GlobalExceptionHandler;
@@ -32,21 +32,21 @@ class EpisodeControllerTest {
 	@Test
 	void findAllReturnsEpisodes() throws Exception {
 		when(episodeService.findAll()).thenReturn(List.of(
-				new Episode(1, "Pilot", "December 2, 2013", "S01E01", "http://ep/1", List.of())));
+				new Episode(1, "Pilot", "December 2, 2013", "S01E01", List.of())));
 
 		mockMvc.perform(get("/api/v1/episodes"))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[0].code").value("S01E01"));
+				.andExpect(jsonPath("$.data[0].code").value("S01E01"));
 	}
 
 	@Test
 	void findByIdReturnsEpisode() throws Exception {
 		when(episodeService.findById(1)).thenReturn(
-				new Episode(1, "Pilot", "December 2, 2013", "S01E01", "http://ep/1", List.of(1, 2)));
+				new Episode(1, "Pilot", "December 2, 2013", "S01E01", List.of(1, 2)));
 
 		mockMvc.perform(get("/api/v1/episodes/1"))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.characterIds[1]").value(2));
+				.andExpect(jsonPath("$.data.characterIds[1]").value(2));
 	}
 
 	@Test

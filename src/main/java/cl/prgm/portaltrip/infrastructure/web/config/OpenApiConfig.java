@@ -18,7 +18,7 @@ public class OpenApiConfig {
 				.info(new Info()
 						.title("Portaltrip API")
 						.version("0.0.1")
-						.description("Consulta de locations, characters y episodes."))
+						.description("Catálogo de locations, characters y episodes (solo lectura), cotización de viajes interdimensionales y gestión del ciclo de vida de reservas."))
 				.servers(List.of(new Server().url("http://localhost:8080")));
 	}
 

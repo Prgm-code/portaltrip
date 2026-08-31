@@ -13,7 +13,8 @@ services:
       - pgdata:/var/lib/postgresql/data
       # La imagen oficial ejecuta automáticamente los .sql de este directorio
       # la primera vez que se inicializa el volumen de datos.
-      - ./db/seed.sql:/docker-entrypoint-initdb.d/seed.sql:ro
+      - ./db/seed.sql:/docker-entrypoint-initdb.d/01-seed.sql:ro
+      - ./db/app-schema.sql:/docker-entrypoint-initdb.d/02-app-schema.sql:ro
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U rick -d rickandmorty']
       interval: 5s

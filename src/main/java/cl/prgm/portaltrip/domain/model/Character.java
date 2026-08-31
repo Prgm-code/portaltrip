@@ -14,6 +14,5 @@ public record Character(
 		Integer locationId,
 		String locationName,
 		String image,
-		String url,
 		List<Integer> episodeIds) {
 }

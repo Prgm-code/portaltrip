@@ -5,32 +5,29 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import cl.prgm.portaltrip.application.port.in.CharacterService;
+import cl.prgm.portaltrip.application.port.out.CharacterRepository;
 import cl.prgm.portaltrip.domain.exception.ResourceNotFoundException;
 import cl.prgm.portaltrip.domain.model.Character;
-import cl.prgm.portaltrip.infrastructure.persistence.CharacterEntity;
-import cl.prgm.portaltrip.infrastructure.persistence.repository.CharacterJpaRepository;
 
 @Service
 @Transactional(readOnly = true)
 public class CharacterServiceImpl implements CharacterService {
 
-	private final CharacterJpaRepository characterJpaRepository;
+	private final CharacterRepository characterRepository;
 
-	public CharacterServiceImpl(CharacterJpaRepository characterJpaRepository) {
-		this.characterJpaRepository = characterJpaRepository;
+	public CharacterServiceImpl(CharacterRepository characterRepository) {
+		this.characterRepository = characterRepository;
 	}
 
 	@Override
 	public List<Character> findAll() {
-		return characterJpaRepository.findAllSummaries().stream()
-				.map(CharacterEntity::toSummary)
-				.toList();
+		return characterRepository.findAllSummaries();
 	}
 
 	@Override
 	public Character findById(Integer id) {
-		return characterJpaRepository.findDetailedById(id)
-				.map(CharacterEntity::toDomain)
+		return characterRepository.findDetailedById(id)
 				.orElseThrow(() -> new ResourceNotFoundException("Character", id));
 	}
 

@@ -65,16 +65,16 @@ class CatalogJpaRepositoryTest {
 	}
 
 	private LocationEntity persistCatalog() {
-		LocationEntity earth = new LocationEntity(1, "Earth (C-137)", "Planet", "Dimension C-137", "http://loc/1");
-		LocationEntity citadel = new LocationEntity(3, "Citadel of Ricks", "Space station", "unknown", "http://loc/3");
+		LocationEntity earth = new LocationEntity(1, "Earth (C-137)", "Planet", "Dimension C-137");
+		LocationEntity citadel = new LocationEntity(3, "Citadel of Ricks", "Space station", "unknown");
 		entityManager.persist(earth);
 		entityManager.persist(citadel);
 
 		CharacterEntity rick = new CharacterEntity(
-				1, "Rick Sanchez", "Alive", "Human", "", "Male", earth, citadel, "img", "url");
+				1, "Rick Sanchez", "Alive", "Human", "", "Male", earth, citadel, "img");
 		entityManager.persist(rick);
 
-		EpisodeEntity pilot = new EpisodeEntity(1, "Pilot", "December 2, 2013", "S01E01", "http://ep/1");
+		EpisodeEntity pilot = new EpisodeEntity(1, "Pilot", "December 2, 2013", "S01E01");
 		entityManager.persist(pilot);
 
 		rick.getEpisodes().add(pilot);

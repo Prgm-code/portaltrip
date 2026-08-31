@@ -9,7 +9,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import cl.prgm.portaltrip.application.service.CharacterService;
+import cl.prgm.portaltrip.application.port.in.CharacterService;
 import cl.prgm.portaltrip.domain.exception.ResourceNotFoundException;
 import cl.prgm.portaltrip.domain.model.Character;
 import cl.prgm.portaltrip.infrastructure.web.exception.GlobalExceptionHandler;
@@ -35,8 +35,11 @@ class CharacterControllerTest {
 
 		mockMvc.perform(get("/api/v1/characters"))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[0].name").value("Rick Sanchez"))
-				.andExpect(jsonPath("$[0].origin.name").value("Earth (C-137)"));
+				.andExpect(jsonPath("$.status").value(200))
+				.andExpect(jsonPath("$.message").value("Characters retrieved successfully"))
+				.andExpect(jsonPath("$.data[0].name").value("Rick Sanchez"))
+				.andExpect(jsonPath("$.data[0].origin.name").value("Earth (C-137)"))
+				.andExpect(jsonPath("$.timestamp").exists());
 	}
 
 	@Test
@@ -45,8 +48,8 @@ class CharacterControllerTest {
 
 		mockMvc.perform(get("/api/v1/characters/1"))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.id").value(1))
-				.andExpect(jsonPath("$.location.id").value(3));
+				.andExpect(jsonPath("$.data.id").value(1))
+				.andExpect(jsonPath("$.data.location.id").value(3));
 	}
 
 	@Test
@@ -62,7 +65,7 @@ class CharacterControllerTest {
 		return new Character(
 				1, "Rick Sanchez", "Alive", "Human", "", "Male",
 				1, "Earth (C-137)", 3, "Citadel of Ricks",
-				"img", "url", List.of());
+				"img", List.of());
 	}
 
 }
