@@ -1,4 +1,30 @@
 services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: portaltrip-api
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SERVER_PORT: 8080
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-rickandmorty}
+      DB_USER: ${DB_USER:-rick}
+      DB_PASSWORD: ${DB_PASSWORD:-morty}
+    ports:
+      - '${SERVER_PORT:-8080}:8080'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'curl', '--fail', '--silent', 'http://localhost:8080/health']
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 20s
+
   postgres:
     image: postgres:17-alpine
     container_name: portaltrip-db
@@ -7,8 +33,6 @@ services:
       POSTGRES_DB: ${DB_NAME:-rickandmorty}
       POSTGRES_USER: ${DB_USER:-rick}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-morty}
-    ports:
-      - '${DB_PORT:-5432}:5432'
     volumes:
       - pgdata:/var/lib/postgresql/data
       # La imagen oficial ejecuta automáticamente los .sql de este directorio

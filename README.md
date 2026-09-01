@@ -217,15 +217,18 @@ cp .env.example .env
 | `DB_USER` | PostgreSQL user | `rick` |
 | `DB_PASSWORD` | PostgreSQL password | `morty` |
 
-Start or stop PostgreSQL with Docker Compose:
+Start or stop the API and PostgreSQL with Docker Compose:
 
 ```bash
-# Start PostgreSQL and load the catalog on the first initialization
-docker compose up -d
+# Build Spring Boot, start the API and initialize PostgreSQL
+docker compose up -d --build
 
 # Stop the container without deleting its data
 docker compose down
 ```
+
+Compose exposes the API at `http://localhost:8080`. PostgreSQL stays on the internal
+Compose network, and Spring Boot connects to it with the hostname `postgres`.
 
 The official PostgreSQL image runs these files only when it creates the data volume:
 
