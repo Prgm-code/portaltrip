@@ -504,7 +504,3 @@ logging:
 ```
 
 ---
-
-## Frontend integration
-
-The frontend can replace its direct Rick and Morty API calls with the catalog endpoints and replace `localStorage` persistence with `/api/v1/reservations`. It should map backend values such as `CONFIRMED`, `IN_PROGRESS` and `LOW` to the labels displayed by the interface.
