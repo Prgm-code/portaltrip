@@ -6,7 +6,7 @@ services:
     container_name: portaltrip-api
     restart: unless-stopped
     environment:
-      SPRING_PROFILES_ACTIVE: prod
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev} # por defecto dev si no se setea para ver los logs y swagger
       SERVER_PORT: 8080
       DB_HOST: postgres
       DB_PORT: 5432
@@ -14,12 +14,13 @@ services:
       DB_USER: ${DB_USER:-rick}
       DB_PASSWORD: ${DB_PASSWORD:-morty}
     ports:
-      - '${SERVER_PORT:-8080}:8080'
+      - "${SERVER_PORT:-8080}:8080"
     depends_on:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ['CMD', 'curl', '--fail', '--silent', 'http://localhost:8080/health']
+      test:
+        ["CMD", "curl", "--fail", "--silent", "http://localhost:8080/health"]
       interval: 10s
       timeout: 3s
       retries: 12
@@ -40,7 +41,7 @@ services:
       - ./db/seed.sql:/docker-entrypoint-initdb.d/01-seed.sql:ro
       - ./db/app-schema.sql:/docker-entrypoint-initdb.d/02-app-schema.sql:ro
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      test: ["CMD-SHELL", 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
       interval: 5s
       timeout: 3s
       retries: 10

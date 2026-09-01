@@ -210,6 +210,7 @@ cp .env.example .env
 
 | Variable | Description | Local default |
 | :--- | :--- | :--- |
+| `SPRING_PROFILES_ACTIVE` | Spring profile (`dev` enables Swagger, `prod` disables it) | `dev` |
 | `SERVER_PORT` | Spring Boot HTTP port | `8080` |
 | `DB_HOST` | PostgreSQL hostname | `localhost` |
 | `DB_PORT` | PostgreSQL port | `5432` |
@@ -227,8 +228,16 @@ docker compose up -d --build
 docker compose down
 ```
 
-Compose exposes the API at `http://localhost:8080`. PostgreSQL stays on the internal
-Compose network, and Spring Boot connects to it with the hostname `postgres`.
+Compose exposes the API at `http://localhost:8080`. The stack defaults to the `dev`
+profile, so Swagger UI is available at `http://localhost:8080/swagger-ui.html`.
+PostgreSQL stays on the internal Compose network, and Spring Boot connects to it
+with the hostname `postgres`.
+
+To run the same stack without documentation endpoints:
+
+```bash
+SPRING_PROFILES_ACTIVE=prod docker compose up -d --build
+```
 
 The official PostgreSQL image runs these files only when it creates the data volume:
 

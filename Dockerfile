@@ -7,6 +7,8 @@ RUN mvn -B -ntp dependency:go-offline
 COPY src ./src
 RUN mvn -B -ntp -DskipTests package
 
+
+# Runtime stage to avoid leaving the build stage artifacts in the final image
 FROM eclipse-temurin:26-jre-alpine
 
 RUN apk add --no-cache curl
