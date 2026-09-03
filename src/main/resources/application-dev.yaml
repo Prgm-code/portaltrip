@@ -19,3 +19,10 @@ springdoc:
   swagger-ui:
     enabled: true
     try-it-out-enabled: true
+
+app:
+  security:
+    jwt:
+      # HS256 key for local development only; lets the app start without environment variables.
+      # The prod profile has no default and requires JWT_SECRET_BASE64.
+      secret: ${JWT_SECRET_BASE64:cG9ydGFsdHJpcC1kZXYtb25seS1qd3Qtc2VjcmV0LWRvLW5vdC11c2UtaW4tcHJvZA==}

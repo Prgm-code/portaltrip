@@ -6,21 +6,23 @@ services:
     container_name: portaltrip-api
     restart: unless-stopped
     environment:
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev} # por defecto dev si no se setea para ver los logs y swagger
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev} # defaults to dev when unset so logs and Swagger are available
       SERVER_PORT: 8080
       DB_HOST: postgres
       DB_PORT: 5432
       DB_NAME: ${DB_NAME:-rickandmorty}
       DB_USER: ${DB_USER:-rick}
       DB_PASSWORD: ${DB_PASSWORD:-morty}
-      JWT_SECRET_BASE64: ${JWT_SECRET_BASE64:-}
+      # HS256 key for local development only. In production export JWT_SECRET_BASE64 (openssl rand -base64 32).
+      JWT_SECRET_BASE64: ${JWT_SECRET_BASE64:-cG9ydGFsdHJpcC1kZXYtb25seS1qd3Qtc2VjcmV0LWRvLW5vdC11c2UtaW4tcHJvZA==}
       JWT_TTL: ${JWT_TTL:-PT30M}
       JWT_ISSUER: ${JWT_ISSUER:-https://portaltrip.local}
       JWT_AUDIENCE: ${JWT_AUDIENCE:-portaltrip-api}
       REGISTRATION_CREDIT: ${REGISTRATION_CREDIT:-5000.00}
-      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-http://localhost:4321,http://127.0.0.1:4321}
-    ports:
-      - "${SERVER_PORT:-8080}:8080"
+      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-http://localhost:4321,http://127.0.0.1:4321,http://localhost:5173,http://127.0.0.1:5173}
+    # Host ports live in compose.override.yml (local only). Coolify routes through its proxy.
+    expose:
+      - "8080"
     depends_on:
       postgres:
         condition: service_healthy
@@ -42,8 +44,8 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD:-morty}
     volumes:
       - pgdata:/var/lib/postgresql/data
-      # La imagen oficial ejecuta automáticamente los .sql de este directorio
-      # la primera vez que se inicializa el volumen de datos.
+      # The official image runs the .sql files in this directory automatically
+      # the first time the data volume is initialized.
       - ./db/seed.sql:/docker-entrypoint-initdb.d/01-seed.sql:ro
       - ./db/app-schema.sql:/docker-entrypoint-initdb.d/02-app-schema.sql:ro
     healthcheck:

@@ -13,6 +13,135 @@ The application follows the same service pattern as NeonPulse. Controllers depen
 
 [Open the visual system report](https://iy01azmjp64c.postplan.dev)
 
+## 🔌 Frontend for this API
+
+**This API is the backend of the PortalTrip frontend.** GitHub repository:
+**https://github.com/Prgm-code/portaltrip-frontend**
+
+With both repositories downloaded there is no `.env` to create: the `dev` profile
+accepts the `http://localhost:4321` origin and the UI targets `http://localhost:8080`.
+
+---
+
+# 🎫 Enterprise Booking System - Full-Stack Integration
+
+> **Final Challenge · Java Course · Globant Talento Ready · Desafío Latam.**
+> PortalTrip is the course's full-stack capstone project: a Java/Spring Boot REST API backed by PostgreSQL and a TypeScript/Astro frontend, delivered as two repositories that connect locally with no extra configuration.
+
+This repository is the **backend microservice** of the PortalTrip capstone project. The frontend lives in [Prgm-code/portaltrip-frontend](https://github.com/Prgm-code/portaltrip-frontend).
+
+## 🛠️ Tech Stack
+
+* **Backend:** Java 26, Spring Boot 4.1.1, Spring Data JPA, Hibernate 7.4, Spring Security 7.1 (JWT HS256), OpenAPI/Swagger (springdoc 3.1.0).
+* **Frontend:** strict TypeScript 6, Astro 7.1 on Vite 8, native ESM, semantic HTML5/CSS3, Zustand 5, Tailwind CSS 4 (port `4321`).
+* **Infrastructure:** Docker Compose, PostgreSQL 17 Alpine published on `localhost:5432`, multi-stage Dockerfile (Maven + Temurin 26 JRE).
+* **Quality and Testing:** JUnit 6, Mockito 5, JaCoCo 0.8.15 (100% instructions and branches), TDD & Clean Architecture.
+
+### Exact versions
+
+| Layer | Technology | Version |
+| :--- | :--- | :--- |
+| Backend | Java (Temurin) | 26 |
+| Backend | Spring Boot | 4.1.1 |
+| Backend | Spring Security (JWT HS256, OAuth2 Resource Server) | 7.1.1 |
+| Backend | Spring Data JPA + Hibernate ORM | 7.4.5 |
+| Backend | springdoc-openapi (Swagger UI) | 3.1.0 |
+| Backend | Maven Wrapper | 3.9.16 |
+| Backend | JUnit Jupiter / Mockito / JaCoCo | 6.0.3 / 5.23.0 / 0.8.15 |
+| Database | PostgreSQL (Docker `postgres:17-alpine`) | 17 |
+| Frontend | Node.js / pnpm | 24 / 10.34.5 |
+| Frontend | Astro (on Vite 8.2) | 7.1.6 |
+| Frontend | TypeScript (`astro/tsconfigs/strict`, zero `any`) | 6.0.3 |
+| Frontend | Tailwind CSS | 4.3.3 |
+| Frontend | Zustand | 5.0.14 |
+| Frontend | Three.js | 0.185.1 |
+| Frontend | Biome (lint + format) | 2.5.7 |
+| Infrastructure | Docker Compose (`compose.yml`) + multi-stage Dockerfiles | Compose v2 |
+
+---
+
+## 🔗 Reference Repositories
+
+* Domain Core / Milestone 1: https://github.com/sebavidal10/neonpulse-ticketera
+* Spring Boot Backend / Milestone 4: https://github.com/sebavidal10/neonpulse-api-springboot
+* Vite + TS Frontend / Milestone 2: https://github.com/sebavidal10/neonpulse-frontend
+
+---
+
+## 🚀 Local Setup Guide
+
+No `.env` file is needed: the API `dev` profile ships defaults for the database, the JWT key and CORS (`http://localhost:4321`), and the UI points to `http://localhost:8080`. Requires Java 26, Docker, Node.js 24 and pnpm 10 (`npm install -g pnpm`).
+
+### 1. Start the Relational Database
+
+```bash
+cd portaltrip
+docker compose up -d postgres
+```
+
+PostgreSQL is now listening on `localhost:5432` (`rickandmorty` / `rick` / `morty`) with the catalog and the reservation schema loaded automatically.
+
+### 2. Run the Automated Tests
+
+```bash
+./mvnw clean test
+```
+
+172 tests (JUnit 5 + Mockito) run against in-memory H2; Docker is not required for this step.
+
+### 3. Start the Backend Microservice
+
+```bash
+./mvnw spring-boot:run
+```
+
+* REST API: http://localhost:8080/api/v1/reservations
+* Swagger UI (dev profile): http://localhost:8080/swagger-ui.html
+* Healthcheck: http://localhost:8080/health
+
+All-in-one alternative with Docker: `docker compose up -d --build` starts PostgreSQL and the API in a single command.
+
+### 4. Start the Web Frontend
+
+```bash
+cd ../portaltrip-frontend
+pnpm install
+pnpm dev
+```
+
+* Web App: http://localhost:4321
+
+npm also works (`npm install`, `npm run dev`). With both repositories downloaded side by side there is nothing to configure: the UI targets `http://localhost:8080` and the API accepts the `http://localhost:4321` origin by default.
+
+Full cycle: create your passport from the header button (email and password), pick a destination, request a quote and confirm the reservation. The API stores it in PostgreSQL and the reservations list refreshes in the UI without reloading the page. `pnpm build` runs `astro check`, Biome and the production build with zero errors.
+
+CORS is handled globally in `SecurityConfig` (`CorsConfigurationSource`, equivalent to `@CrossOrigin`) and allows `http://localhost:4321` and `http://localhost:5173` by default.
+
+---
+
+## ☁️ Deploying to Coolify (or any Docker host)
+
+The multi-stage `Dockerfile` builds the WAR with Maven and runs it on Temurin 26 JRE. The healthcheck is `GET /health` on port `8080`.
+
+1. Create a **PostgreSQL 17** resource in Coolify (or use an external one) and run `db/seed.sql` followed by `db/app-schema.sql` against it once. The `prod` profile validates the schema (`ddl-auto: validate`) and never creates it.
+2. Create the application from this repository with **Build Pack: Dockerfile**, port `8080`.
+3. Define the environment variables:
+
+| Variable | Production value |
+| :--- | :--- |
+| `SPRING_PROFILES_ACTIVE` | `prod` (Swagger and OpenAPI are disabled) |
+| `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | PostgreSQL connection data |
+| `JWT_SECRET_BASE64` | Required. Generate one with `openssl rand -base64 32` |
+| `APP_CORS_ALLOWED_ORIGINS` | Public frontend URL, for example `https://app.mydomain.com` |
+| `JWT_ISSUER`, `JWT_AUDIENCE`, `JWT_TTL`, `REGISTRATION_CREDIT` | Optional; they have defaults |
+
+Alternative (recommended, single resource): deploy `compose.yml` as a **Docker Compose** resource in Coolify. It starts the API and PostgreSQL together and loads `db/seed.sql` and `db/app-schema.sql` the first time the `pgdata` volume is created.
+
+1. New resource → Docker Compose → this repository, branch `main`, file `compose.yml`.
+2. Environment variables: `SPRING_PROFILES_ACTIVE=prod`, `JWT_SECRET_BASE64`, `DB_PASSWORD` and `APP_CORS_ALLOWED_ORIGINS=https://<your-frontend-domain>`. Everything else already has a default in the compose file.
+3. Assign the API domain to the `app` service. Coolify routes it to container port `8080` through its proxy; `compose.yml` publishes no host ports (see `compose.override.yml` for local runs), so it never fails with "port is already allocated".
+4. Check `https://<your-api-domain>/health`. With `prod`, Swagger is disabled.
+
 ---
 
 ## Project structure and architecture
@@ -258,14 +387,14 @@ cp .env.example .env
 | `DB_NAME` | PostgreSQL database | `rickandmorty` |
 | `DB_USER` | PostgreSQL user | `rick` |
 | `DB_PASSWORD` | PostgreSQL password | `morty` |
-| `JWT_SECRET_BASE64` | Base64 HMAC secret; required and at least 32 decoded bytes | none |
+| `JWT_SECRET_BASE64` | Base64 HMAC secret, at least 32 decoded bytes. `dev` and Compose ship a development-only key; `prod` requires an explicit value | dev key from `.env.example` |
 | `JWT_TTL` | Access-token lifetime | `PT30M` |
 | `JWT_ISSUER` | Expected JWT issuer | `https://portaltrip.local` |
 | `JWT_AUDIENCE` | Expected JWT audience | `portaltrip-api` |
 | `REGISTRATION_CREDIT` | Credits granted to a new account | `5000.00` |
-| `APP_CORS_ALLOWED_ORIGINS` | Comma-separated frontend origins | `http://localhost:4321,http://127.0.0.1:4321` |
+| `APP_CORS_ALLOWED_ORIGINS` | Comma-separated frontend origins | `http://localhost:4321,http://127.0.0.1:4321,http://localhost:5173,http://127.0.0.1:5173` |
 
-Generate a local signing key once and place the result in `.env`:
+The development key is safe to use locally only. Generate a real one for production and export it as `JWT_SECRET_BASE64`:
 
 ```bash
 openssl rand -base64 32
@@ -281,10 +410,15 @@ docker compose up -d --build
 docker compose down
 ```
 
-Compose exposes the API at `http://localhost:8080`. The stack defaults to the `dev`
-profile, so Swagger UI is available at `http://localhost:8080/swagger-ui.html`.
-PostgreSQL stays on the internal Compose network, and Spring Boot connects to it
-with the hostname `postgres`.
+Compose exposes the API at `http://localhost:8080` and PostgreSQL at `localhost:5432`.
+The stack defaults to the `dev` profile, so Swagger UI is available at
+`http://localhost:8080/swagger-ui.html`. Inside the Compose network Spring Boot
+connects to the database with the hostname `postgres`.
+
+Host port bindings live in `compose.override.yml`, which Docker Compose merges
+automatically for local runs. `compose.yml` alone only declares `expose: 8080`, so a
+host such as Coolify that runs `docker compose -f compose.yml` publishes no host ports
+and cannot collide with other services on the server.
 
 To run the same stack without documentation endpoints:
 
@@ -313,7 +447,7 @@ docker compose up -d
 ./mvnw spring-boot:run
 ```
 
-The application starts at `http://localhost:8080`. `JWT_SECRET_BASE64` must be present in the environment when the application starts outside the test profile.
+The application starts at `http://localhost:8080`. The `dev` profile includes a development-only JWT key and CORS defaults, so no environment variables are required locally. The `prod` profile has no fallback and requires `JWT_SECRET_BASE64`.
 
 - Swagger UI: `http://localhost:8080/swagger-ui.html`
 - OpenAPI JSON: `http://localhost:8080/api-docs`

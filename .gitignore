@@ -1,6 +1,14 @@
 HELP.md
 target/
+*.class
+
+### Secretos y entorno ###
 .env
+.env.*
+!.env.example
+
+### macOS ###
+.DS_Store
 
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
