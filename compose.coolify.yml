@@ -37,7 +37,12 @@ services:
       start_period: 20s
 
   postgres:
-    image: postgres:17-alpine
+    # Custom image with db/seed.sql and db/app-schema.sql baked in (see db/Dockerfile).
+    # Bind mounts are not used because Coolify rewrites relative paths and the files
+    # would not be found on the server.
+    build:
+      context: .
+      dockerfile: db/Dockerfile
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${DB_NAME:-rickandmorty}
@@ -45,9 +50,6 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD:-}
     volumes:
       - pgdata:/var/lib/postgresql/data
-      # The official image runs these .sql files automatically the first time the volume is created.
-      - ./db/seed.sql:/docker-entrypoint-initdb.d/01-seed.sql:ro
-      - ./db/app-schema.sql:/docker-entrypoint-initdb.d/02-app-schema.sql:ro
     healthcheck:
       test: ["CMD-SHELL", 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
       interval: 5s

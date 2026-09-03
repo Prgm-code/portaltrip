@@ -135,7 +135,9 @@ The multi-stage `Dockerfile` builds the WAR with Maven and runs it on Temurin 26
 | `APP_CORS_ALLOWED_ORIGINS` | Public frontend URL, for example `https://app.mydomain.com` |
 | `JWT_ISSUER`, `JWT_AUDIENCE`, `JWT_TTL`, `REGISTRATION_CREDIT` | Optional; they have defaults |
 
-Alternative (recommended, single resource): deploy `compose.coolify.yml` as a **Docker Compose** resource in Coolify. It starts the API and PostgreSQL together and loads `db/seed.sql` and `db/app-schema.sql` the first time the `pgdata` volume is created.
+Alternative (recommended, single resource): deploy `compose.coolify.yml` as a **Docker Compose** resource in Coolify. It starts the API and PostgreSQL together. The database image is built from `db/Dockerfile`, which copies `db/seed.sql` and `db/app-schema.sql` into the image, so the catalog and schema load the first time the `pgdata` volume is created even on hosts that rewrite bind mounts.
+
+If the volume was created before the schema existed (the API logs `Schema validation: missing table`), delete it and redeploy: stop the resource, remove the volume from the **Storages** tab (or `docker volume rm <project>_pgdata` on the server) and deploy again.
 
 1. New resource → Docker Compose → this repository, branch `main`, **Docker Compose location: `compose.coolify.yml`**.
 2. Environment variables: `JWT_SECRET_BASE64`, `DB_PASSWORD` and `APP_CORS_ALLOWED_ORIGINS=https://<your-frontend-domain>`. The profile defaults to `prod` in this file; everything else has a default.
@@ -151,6 +153,7 @@ portaltrip/
 ├── pom.xml                                            # Maven, Spring Boot and JaCoCo
 ├── compose.yml                                        # Local stack: API + PostgreSQL 17 with host ports
 ├── compose.coolify.yml                                # Same stack for Coolify, no host ports
+├── db/Dockerfile                                      # PostgreSQL image with seed and schema baked in
 ├── .env.example                                       # Local environment template
 ├── bruno/                                             # Executable REST contract collection
 ├── db/
