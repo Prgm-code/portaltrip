@@ -15,6 +15,7 @@ class OpenApiConfigTest {
 		assertThat(openAPI.getInfo().getTitle()).isEqualTo("Portaltrip API");
 		assertThat(openAPI.getInfo().getVersion()).isEqualTo("0.0.1");
 		assertThat(openAPI.getServers()).hasSize(1);
+		assertThat(openAPI.getComponents().getSecuritySchemes()).containsKey("bearerAuth");
 	}
 
 }

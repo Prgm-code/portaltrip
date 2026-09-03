@@ -1,7 +1,7 @@
 meta {
   name: Create reservation
   type: http
-  seq: 4
+  seq: 7
   tags: [
     smoke
   ]
@@ -10,17 +10,21 @@ meta {
 post {
   url: {{baseUrl}}/api/v1/reservations
   body: json
-  auth: none
+  auth: bearer
 }
 
 headers {
   content-type: application/json
+  Idempotency-Key: 58f13289-82e8-4e67-a196-8b8ef445c978
+}
+
+auth:bearer {
+  token: {{accessToken}}
 }
 
 body:json {
   {
     "passengerName": "Morty Smith",
-    "email": "morty.bruno@example.com",
     "destinationId": 1,
     "travelDate": "2099-12-20",
     "passengers": 2,
@@ -34,10 +38,12 @@ body:json {
 assert {
   res.status: eq 201
   res.body.status: eq 201
-  res.body.data.status: eq CONFIRMED
+  res.body.data.reservation.status: eq CONFIRMED
+  res.body.data.remainingBalance: isNumber
 }
 
 script:post-response {
   const body = res.getBody();
-  bru.setEnvVar("reservationId", body.data.id);
+  bru.setEnvVar("reservationId", body.data.reservation.id);
+  bru.setEnvVar("remainingBalance", String(body.data.remainingBalance));
 }

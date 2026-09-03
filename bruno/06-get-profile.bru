@@ -1,0 +1,24 @@
+meta {
+  name: Get current traveler
+  type: http
+  seq: 6
+  tags: [
+    smoke
+  ]
+}
+
+get {
+  url: {{baseUrl}}/api/v1/users/me
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.data.email: eq {{travelerEmail}}
+  res.body.data.balance: eq 5000
+}

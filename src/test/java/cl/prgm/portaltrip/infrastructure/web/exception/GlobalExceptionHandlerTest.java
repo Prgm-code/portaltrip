@@ -1,5 +1,6 @@
 package cl.prgm.portaltrip.infrastructure.web.exception;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Set;
 
@@ -11,8 +12,13 @@ import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.bind.MissingRequestHeaderException;
 
 import cl.prgm.portaltrip.domain.exception.DomainValidationException;
+import cl.prgm.portaltrip.domain.exception.DuplicateUserException;
+import cl.prgm.portaltrip.domain.exception.IdempotencyConflictException;
+import cl.prgm.portaltrip.domain.exception.InsufficientBalanceException;
+import cl.prgm.portaltrip.domain.exception.InvalidCredentialsException;
 import cl.prgm.portaltrip.domain.exception.InvalidReservationStateException;
 import cl.prgm.portaltrip.domain.exception.ResourceNotFoundException;
 import cl.prgm.portaltrip.domain.model.ReservationStatus;
@@ -100,6 +106,15 @@ class GlobalExceptionHandlerTest {
 	}
 
 	@Test
+	void mapsMissingRequestHeader() throws Exception {
+		var response = handler.handleRequestBinding(
+				new MissingRequestHeaderException("Idempotency-Key", methodParameter()));
+
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+		assertThat(response.getBody().message()).contains("Idempotency-Key");
+	}
+
+	@Test
 	void mapsMissingHttpResourceTo404() {
 		ResponseEntity<ApiResponseDto<Void>> response = handler.handleNoResource();
 
@@ -130,6 +145,22 @@ class GlobalExceptionHandlerTest {
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
 		assertThat(response.getBody().status()).isEqualTo(409);
 		assertThat(response.getBody().message()).contains("cannot transition from COMPLETED to CANCELLED");
+	}
+
+	@Test
+	void mapsAuthenticationAndBalanceFailures() {
+		assertThat(handler.handleConflict(new DuplicateUserException()).getStatusCode())
+				.isEqualTo(HttpStatus.CONFLICT);
+		assertThat(handler.handleConflict(new IdempotencyConflictException()).getBody().message())
+				.isEqualTo("Idempotency key was already used for a different reservation");
+		assertThat(handler.handleInvalidCredentials(new InvalidCredentialsException()).getStatusCode())
+				.isEqualTo(HttpStatus.UNAUTHORIZED);
+
+		var response = handler.handleInsufficientBalance(
+				new InsufficientBalanceException(new BigDecimal("2000.00"), new BigDecimal("100.00")));
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
+		assertThat(response.getBody().data().required()).isEqualByComparingTo("2000.00");
+		assertThat(response.getBody().data().current()).isEqualByComparingTo("100.00");
 	}
 
 	@Test

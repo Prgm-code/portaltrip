@@ -13,6 +13,12 @@ services:
       DB_NAME: ${DB_NAME:-rickandmorty}
       DB_USER: ${DB_USER:-rick}
       DB_PASSWORD: ${DB_PASSWORD:-morty}
+      JWT_SECRET_BASE64: ${JWT_SECRET_BASE64:-}
+      JWT_TTL: ${JWT_TTL:-PT30M}
+      JWT_ISSUER: ${JWT_ISSUER:-https://portaltrip.local}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-portaltrip-api}
+      REGISTRATION_CREDIT: ${REGISTRATION_CREDIT:-5000.00}
+      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-http://localhost:4321,http://127.0.0.1:4321}
     ports:
       - "${SERVER_PORT:-8080}:8080"
     depends_on:

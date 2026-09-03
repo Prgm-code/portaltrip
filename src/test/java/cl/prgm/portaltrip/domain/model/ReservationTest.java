@@ -17,6 +17,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class ReservationTest {
 
 	private static final UUID ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
+	private static final UUID USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000002");
+	private static final UUID IDEMPOTENCY_KEY = UUID.fromString("00000000-0000-0000-0000-000000000003");
 	private static final OffsetDateTime CREATED = OffsetDateTime.parse("2026-01-01T10:00:00Z");
 	private static final OffsetDateTime NOW = OffsetDateTime.parse("2026-01-02T10:00:00Z");
 
@@ -30,7 +32,7 @@ class ReservationTest {
 		assertThat(reservation.passengerName()).isEqualTo("Rick Sanchez");
 		assertThat(reservation.email()).isEqualTo("rick@sanchez.dev");
 		assertThat(reservation.destinationId()).isEqualTo(1);
-		assertThat(reservation.travelDate()).isEqualTo(LocalDate.of(2026, 2, 1));
+		assertThat(reservation.travelDate()).isEqualTo(LocalDate.of(2099, 2, 1));
 		assertThat(reservation.passengers()).isEqualTo(2);
 		assertThat(reservation.companionIds()).containsExactly(2);
 		assertThat(reservation.tripType()).isEqualTo(TripType.EXPLORATION);
@@ -48,7 +50,8 @@ class ReservationTest {
 		Location destination = destination("Dimension C-137");
 		List<Character> companions = List.of(companion("Alive"));
 
-		Reservation reservation = Reservation.confirm(draft, destination, companions, quote(), ID,
+		Reservation reservation = Reservation.confirm(draft, USER_ID, "rick@sanchez.dev", IDEMPOTENCY_KEY,
+				destination, companions, quote(), ID,
 				"PT-2026-000001", CREATED);
 
 		assertThat(reservation.status()).isEqualTo(ReservationStatus.CONFIRMED);
@@ -60,7 +63,8 @@ class ReservationTest {
 	@Test
 	void confirmRejectsDeadCompanions() {
 		assertThatThrownBy(() -> Reservation.confirm(
-				draft(false), destination("Dimension C-137"), List.of(companion("Dead")), quote(), ID,
+				draft(false), USER_ID, "rick@sanchez.dev", IDEMPOTENCY_KEY,
+				destination("Dimension C-137"), List.of(companion("Dead")), quote(), ID,
 				"PT-2026-000001", CREATED))
 				.isInstanceOf(DomainValidationException.class)
 				.hasMessage("Every selected companion must be alive.");
@@ -71,11 +75,13 @@ class ReservationTest {
 		Location destination = destination("unknown");
 
 		assertThatThrownBy(() -> Reservation.confirm(
-				draft(false), destination, List.of(), quote(), ID, "PT-2026-000001", CREATED))
+				draft(false), USER_ID, "rick@sanchez.dev", IDEMPOTENCY_KEY,
+				destination, List.of(), quote(), ID, "PT-2026-000001", CREATED))
 				.isInstanceOf(DomainValidationException.class)
 				.hasMessage("Destinations in an unknown dimension require interdimensional insurance.");
 		assertThat(Reservation.confirm(
-				draft(true), destination, List.of(), quote(), ID, "PT-2026-000001", CREATED).insurance())
+				draft(true), USER_ID, "rick@sanchez.dev", IDEMPOTENCY_KEY,
+				destination, List.of(), quote(), ID, "PT-2026-000001", CREATED).insurance())
 				.isTrue();
 	}
 
@@ -116,14 +122,19 @@ class ReservationTest {
 	}
 
 	@Test
-	void cancelMovesConfirmedAndInProgressToCancelled() {
+	void cancelMovesConfirmedToCancelled() {
 		Reservation cancelledFromConfirmed = reservation(ReservationStatus.CONFIRMED).cancel();
-		Reservation cancelledFromInProgress = reservation(ReservationStatus.CONFIRMED).start(NOW).cancel();
 
 		assertThat(cancelledFromConfirmed.status()).isEqualTo(ReservationStatus.CANCELLED);
 		assertThat(cancelledFromConfirmed.startedAt()).isNull();
-		assertThat(cancelledFromInProgress.status()).isEqualTo(ReservationStatus.CANCELLED);
-		assertThat(cancelledFromInProgress.startedAt()).isEqualTo(NOW);
+	}
+
+	@Test
+	void cancelRejectsInProgress() {
+		Reservation inProgress = reservation(ReservationStatus.CONFIRMED).start(NOW);
+
+		assertThatThrownBy(inProgress::cancel)
+				.isInstanceOf(InvalidReservationStateException.class);
 	}
 
 	@Test
@@ -144,15 +155,39 @@ class ReservationTest {
 				.hasMessage("Reservation 'PT-2026-000001' cannot transition from CANCELLED to CANCELLED");
 	}
 
+	@Test
+	void matchesOnlyAnEquivalentDraft() {
+		Reservation reservation = reservation(ReservationStatus.CONFIRMED);
+		assertThat(reservation.matches(draft(true))).isTrue();
+		assertThat(reservation.matches(new ReservationDraft("Morty Smith", 1, futureDate(), 2,
+				List.of(2), TripType.EXPLORATION, true, "stable portal"))).isFalse();
+		assertThat(reservation.matches(new ReservationDraft("Rick Sanchez", 2, futureDate(), 2,
+				List.of(2), TripType.EXPLORATION, true, "stable portal"))).isFalse();
+		assertThat(reservation.matches(new ReservationDraft("Rick Sanchez", 1, futureDate().plusDays(1), 2,
+				List.of(2), TripType.EXPLORATION, true, "stable portal"))).isFalse();
+		assertThat(reservation.matches(new ReservationDraft("Rick Sanchez", 1, futureDate(), 3,
+				List.of(2), TripType.EXPLORATION, true, "stable portal"))).isFalse();
+		assertThat(reservation.matches(new ReservationDraft("Rick Sanchez", 1, futureDate(), 2,
+				List.of(3), TripType.EXPLORATION, true, "stable portal"))).isFalse();
+		assertThat(reservation.matches(new ReservationDraft("Rick Sanchez", 1, futureDate(), 2,
+				List.of(2), TripType.PREMIUM, true, "stable portal"))).isFalse();
+		assertThat(reservation.matches(new ReservationDraft("Rick Sanchez", 1, futureDate(), 2,
+				List.of(2), TripType.EXPLORATION, false, "stable portal"))).isFalse();
+		assertThat(reservation.matches(new ReservationDraft("Rick Sanchez", 1, futureDate(), 2,
+				List.of(2), TripType.EXPLORATION, true, "different"))).isFalse();
+	}
+
 	private static Reservation reservation(ReservationStatus status) {
 		return new Reservation(
 				ID,
+				USER_ID,
+				IDEMPOTENCY_KEY,
 				"PT-2026-000001",
 				status,
 				"Rick Sanchez",
 				"rick@sanchez.dev",
 				1,
-				LocalDate.of(2026, 2, 1),
+				LocalDate.of(2099, 2, 1),
 				2,
 				List.of(2),
 				TripType.EXPLORATION,
@@ -167,14 +202,17 @@ class ReservationTest {
 	private static ReservationDraft draft(boolean insurance) {
 		return new ReservationDraft(
 				"Rick Sanchez",
-				"rick@sanchez.dev",
 				1,
-				LocalDate.now().plusDays(1),
+				futureDate(),
 				2,
 				List.of(2),
 				TripType.EXPLORATION,
 				insurance,
 				"stable portal");
+	}
+
+	private static LocalDate futureDate() {
+		return LocalDate.of(2099, 2, 1);
 	}
 
 	private static Quote quote() {

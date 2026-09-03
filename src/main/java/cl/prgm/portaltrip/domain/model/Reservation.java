@@ -10,6 +10,8 @@ import cl.prgm.portaltrip.domain.exception.InvalidReservationStateException;
 
 public record Reservation(
 		UUID id,
+		UUID userId,
+		UUID idempotencyKey,
 		String number,
 		ReservationStatus status,
 		String passengerName,
@@ -32,6 +34,9 @@ public record Reservation(
 
 	public static Reservation confirm(
 			ReservationDraft draft,
+			UUID userId,
+			String email,
+			UUID idempotencyKey,
 			Location destination,
 			List<Character> companions,
 			Quote quote,
@@ -48,10 +53,12 @@ public record Reservation(
 
 		return new Reservation(
 				id,
+				userId,
+				idempotencyKey,
 				number,
 				ReservationStatus.CONFIRMED,
 				draft.passengerName(),
-				draft.email(),
+				email,
 				destination.id(),
 				draft.travelDate(),
 				draft.passengers(),
@@ -80,7 +87,7 @@ public record Reservation(
 	}
 
 	public Reservation cancel() {
-		if (status == ReservationStatus.COMPLETED || status == ReservationStatus.CANCELLED) {
+		if (status != ReservationStatus.CONFIRMED) {
 			throw new InvalidReservationStateException(number, status, ReservationStatus.CANCELLED);
 		}
 		return transitionTo(ReservationStatus.CANCELLED, startedAt, completedAt);
@@ -92,6 +99,8 @@ public record Reservation(
 			OffsetDateTime newCompletedAt) {
 		return new Reservation(
 				id,
+				userId,
+				idempotencyKey,
 				number,
 				newStatus,
 				passengerName,
@@ -107,6 +116,17 @@ public record Reservation(
 				createdAt,
 				newStartedAt,
 				newCompletedAt);
+	}
+
+	public boolean matches(ReservationDraft draft) {
+		return passengerName.equals(draft.passengerName())
+				&& destinationId.equals(draft.destinationId())
+				&& travelDate.equals(draft.travelDate())
+				&& passengers == draft.passengers()
+				&& companionIds.equals(draft.companionIds())
+				&& tripType == draft.tripType()
+				&& insurance == draft.insurance()
+				&& comments.equals(draft.comments());
 	}
 
 }

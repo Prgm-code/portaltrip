@@ -8,6 +8,8 @@ import org.springframework.context.annotation.Profile;
 
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
+import io.swagger.v3.oas.models.Components;
+import io.swagger.v3.oas.models.security.SecurityScheme;
 import io.swagger.v3.oas.models.servers.Server;
 
 @Configuration
@@ -17,10 +19,16 @@ public class OpenApiConfig {
 	@Bean
 	public OpenAPI portaltripOpenAPI() {
 		return new OpenAPI()
+				.components(new Components().addSecuritySchemes(
+						"bearerAuth",
+						new SecurityScheme()
+								.type(SecurityScheme.Type.HTTP)
+								.scheme("bearer")
+								.bearerFormat("JWT")))
 				.info(new Info()
 						.title("Portaltrip API")
 						.version("0.0.1")
-						.description("Read-only location, character, and episode catalog with interdimensional trip quotes and reservation lifecycle management."))
+						.description("Interdimensional trip catalog, secure user accounts, credit balance, quotes, and user-owned reservations."))
 				.servers(List.of(new Server().url("http://localhost:8080")));
 	}
 

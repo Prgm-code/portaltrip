@@ -15,21 +15,20 @@ class ReservationDraftTest {
 
 	@Test
 	void normalizesValuesAndProtectsCompanionIds() {
-		List<Integer> companionIds = new ArrayList<>(List.of(2));
+		List<Integer> companionIds = new ArrayList<>(List.of(3, 2));
 
-		ReservationDraft draft = draft("  Rick Sanchez  ", "rick@sanchez.dev ", 1,
+		ReservationDraft draft = draft("  Rick Sanchez  ", 1,
 				LocalDate.now().plusDays(1), 2, companionIds, TripType.EXPRESS, null);
-		companionIds.add(3);
+		companionIds.add(4);
 
 		assertThat(draft.passengerName()).isEqualTo("Rick Sanchez");
-		assertThat(draft.email()).isEqualTo("rick@sanchez.dev");
-		assertThat(draft.companionIds()).containsExactly(2);
+		assertThat(draft.companionIds()).containsExactly(2, 3);
 		assertThat(draft.comments()).isEmpty();
 	}
 
 	@Test
 	void defaultsMissingCompanionsAndTrimsComments() {
-		ReservationDraft draft = draft("Rick Sanchez", "rick@sanchez.dev", 1,
+		ReservationDraft draft = draft("Rick Sanchez", 1,
 				LocalDate.now().plusDays(1), 2, null, TripType.EXPRESS, "  stable portal  ");
 
 		assertThat(draft.companionIds()).isEmpty();
@@ -39,59 +38,50 @@ class ReservationDraftTest {
 	@Test
 	void rejectsInvalidPassengerName() {
 		assertInvalid("Enter the passenger's full name.",
-				() -> draft(" Al ", "rick@sanchez.dev", 1, futureDate(), 2, List.of(), TripType.EXPRESS, ""));
+				() -> draft(" Al ", 1, futureDate(), 2, List.of(), TripType.EXPRESS, ""));
 		assertInvalid("Enter the passenger's full name.",
-				() -> draft(null, "rick@sanchez.dev", 1, futureDate(), 2, List.of(), TripType.EXPRESS, ""));
-	}
-
-	@Test
-	void rejectsInvalidEmail() {
-		assertInvalid("Enter a valid email address.",
-				() -> draft("Rick Sanchez", "rick.sanchez", 1, futureDate(), 2, List.of(), TripType.EXPRESS, ""));
-		assertInvalid("Enter a valid email address.",
-				() -> draft("Rick Sanchez", null, 1, futureDate(), 2, List.of(), TripType.EXPRESS, ""));
+				() -> draft(null, 1, futureDate(), 2, List.of(), TripType.EXPRESS, ""));
 	}
 
 	@Test
 	void rejectsInvalidDestination() {
 		assertInvalid("Select a destination.",
-				() -> draft("Rick Sanchez", "rick@sanchez.dev", 0, futureDate(), 2, List.of(), TripType.EXPRESS, ""));
+				() -> draft("Rick Sanchez", 0, futureDate(), 2, List.of(), TripType.EXPRESS, ""));
 		assertInvalid("Select a destination.",
-				() -> draft("Rick Sanchez", "rick@sanchez.dev", null, futureDate(), 2, List.of(), TripType.EXPRESS, ""));
+				() -> draft("Rick Sanchez", null, futureDate(), 2, List.of(), TripType.EXPRESS, ""));
 	}
 
 	@Test
 	void rejectsInvalidTravelDate() {
 		assertInvalid("The travel date must be in the future.",
-				() -> draft("Rick Sanchez", "rick@sanchez.dev", 1, LocalDate.now(), 2, List.of(), TripType.EXPRESS, ""));
+				() -> draft("Rick Sanchez", 1, LocalDate.now(), 2, List.of(), TripType.EXPRESS, ""));
 		assertInvalid("The travel date must be in the future.",
-				() -> draft("Rick Sanchez", "rick@sanchez.dev", 1, null, 2, List.of(), TripType.EXPRESS, ""));
+				() -> draft("Rick Sanchez", 1, null, 2, List.of(), TripType.EXPRESS, ""));
 	}
 
 	@Test
 	void rejectsInvalidPassengerCount() {
 		assertInvalid("A reservation must have between 1 and 8 passengers.",
-				() -> draft("Rick Sanchez", "rick@sanchez.dev", 1, futureDate(), 0, List.of(), TripType.EXPRESS, ""));
+				() -> draft("Rick Sanchez", 1, futureDate(), 0, List.of(), TripType.EXPRESS, ""));
 		assertInvalid("A reservation must have between 1 and 8 passengers.",
-				() -> draft("Rick Sanchez", "rick@sanchez.dev", 1, futureDate(), 9, List.of(), TripType.EXPRESS, ""));
+				() -> draft("Rick Sanchez", 1, futureDate(), 9, List.of(), TripType.EXPRESS, ""));
 	}
 
 	@Test
 	void rejectsTooManyCompanions() {
 		assertInvalid("A reservation can have at most three companions.",
-				() -> draft("Rick Sanchez", "rick@sanchez.dev", 1, futureDate(), 2,
+				() -> draft("Rick Sanchez", 1, futureDate(), 2,
 						List.of(2, 3, 4, 5), TripType.EXPRESS, ""));
 	}
 
 	@Test
 	void rejectsMissingTripType() {
 		assertInvalid("Select a valid trip type.",
-				() -> draft("Rick Sanchez", "rick@sanchez.dev", 1, futureDate(), 2, List.of(), null, ""));
+				() -> draft("Rick Sanchez", 1, futureDate(), 2, List.of(), null, ""));
 	}
 
 	private static ReservationDraft draft(
 			String passengerName,
-			String email,
 			Integer destinationId,
 			LocalDate travelDate,
 			int passengers,
@@ -100,7 +90,6 @@ class ReservationDraftTest {
 			String comments) {
 		return new ReservationDraft(
 				passengerName,
-				email,
 				destinationId,
 				travelDate,
 				passengers,

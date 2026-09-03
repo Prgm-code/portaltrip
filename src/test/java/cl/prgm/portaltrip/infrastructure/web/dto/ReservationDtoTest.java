@@ -24,7 +24,7 @@ class ReservationDtoTest {
 	@Test
 	void requestNormalizesNullCompanionIdsAndComments() {
 		ReservationRequestDto request = new ReservationRequestDto(
-				"Rick Sanchez", "rick@sanchez.dev", 1, LocalDate.of(2099, 1, 1),
+				"Rick Sanchez", 1, LocalDate.of(2099, 1, 1),
 				2, null, "express", false, null);
 
 		assertThat(request.companionIds()).isEmpty();
@@ -34,13 +34,12 @@ class ReservationDtoTest {
 	@Test
 	void requestMapsToDraft() {
 		ReservationRequestDto request = new ReservationRequestDto(
-				"Rick Sanchez", "rick@sanchez.dev", 1, LocalDate.of(2099, 1, 1),
+				"Rick Sanchez", 1, LocalDate.of(2099, 1, 1),
 				2, List.of(2), "premium", true, "stable portal");
 
 		ReservationDraft draft = request.toDraft();
 
 		assertThat(draft.passengerName()).isEqualTo("Rick Sanchez");
-		assertThat(draft.email()).isEqualTo("rick@sanchez.dev");
 		assertThat(draft.destinationId()).isEqualTo(1);
 		assertThat(draft.travelDate()).isEqualTo(LocalDate.of(2099, 1, 1));
 		assertThat(draft.passengers()).isEqualTo(2);
@@ -90,6 +89,8 @@ class ReservationDtoTest {
 				RiskLevel.LOW);
 		return new Reservation(
 				UUID.fromString("00000000-0000-0000-0000-000000000001"),
+				UUID.fromString("00000000-0000-0000-0000-000000000002"),
+				UUID.fromString("00000000-0000-0000-0000-000000000003"),
 				"PT-2026-000001",
 				ReservationStatus.CONFIRMED,
 				"Rick Sanchez",

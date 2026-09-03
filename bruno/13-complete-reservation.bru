@@ -1,7 +1,7 @@
 meta {
   name: Complete reservation
   type: http
-  seq: 7
+  seq: 13
   tags: [
     smoke
   ]
@@ -10,7 +10,11 @@ meta {
 patch {
   url: {{baseUrl}}/api/v1/reservations/{{reservationId}}/complete
   body: none
-  auth: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
 }
 
 assert {

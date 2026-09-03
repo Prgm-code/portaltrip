@@ -11,12 +11,18 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.bind.ServletRequestBindingException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import cl.prgm.portaltrip.domain.exception.DomainValidationException;
+import cl.prgm.portaltrip.domain.exception.DuplicateUserException;
+import cl.prgm.portaltrip.domain.exception.IdempotencyConflictException;
+import cl.prgm.portaltrip.domain.exception.InsufficientBalanceException;
+import cl.prgm.portaltrip.domain.exception.InvalidCredentialsException;
 import cl.prgm.portaltrip.domain.exception.InvalidReservationStateException;
 import cl.prgm.portaltrip.domain.exception.ResourceNotFoundException;
 import cl.prgm.portaltrip.infrastructure.web.dto.ApiResponseDto;
+import cl.prgm.portaltrip.infrastructure.web.dto.BalanceErrorDto;
 import jakarta.validation.ConstraintViolationException;
 
 @RestControllerAdvice
@@ -62,6 +68,12 @@ public class GlobalExceptionHandler {
 						"Invalid value for parameter '" + exception.getName() + "'"));
 	}
 
+	@ExceptionHandler(ServletRequestBindingException.class)
+	public ResponseEntity<ApiResponseDto<Void>> handleRequestBinding(ServletRequestBindingException exception) {
+		return ResponseEntity.badRequest()
+				.body(ApiResponseDto.error(HttpStatus.BAD_REQUEST, exception.getMessage()));
+	}
+
 	@ExceptionHandler(NoResourceFoundException.class)
 	public ResponseEntity<ApiResponseDto<Void>> handleNoResource() {
 		return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -81,6 +93,28 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<ApiResponseDto<Void>> handleInvalidState(InvalidReservationStateException exception) {
 		return ResponseEntity.status(HttpStatus.CONFLICT)
 				.body(ApiResponseDto.error(HttpStatus.CONFLICT, exception.getMessage()));
+	}
+
+	@ExceptionHandler({DuplicateUserException.class, IdempotencyConflictException.class})
+	public ResponseEntity<ApiResponseDto<Void>> handleConflict(RuntimeException exception) {
+		return ResponseEntity.status(HttpStatus.CONFLICT)
+				.body(ApiResponseDto.error(HttpStatus.CONFLICT, exception.getMessage()));
+	}
+
+	@ExceptionHandler(InvalidCredentialsException.class)
+	public ResponseEntity<ApiResponseDto<Void>> handleInvalidCredentials(InvalidCredentialsException exception) {
+		return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+				.body(ApiResponseDto.error(HttpStatus.UNAUTHORIZED, exception.getMessage()));
+	}
+
+	@ExceptionHandler(InsufficientBalanceException.class)
+	public ResponseEntity<ApiResponseDto<BalanceErrorDto>> handleInsufficientBalance(
+			InsufficientBalanceException exception) {
+		return ResponseEntity.unprocessableEntity()
+				.body(ApiResponseDto.error(
+						HttpStatus.UNPROCESSABLE_ENTITY,
+						exception.getMessage(),
+						new BalanceErrorDto(exception.requiredBalance(), exception.currentBalance())));
 	}
 
 	@ExceptionHandler(Exception.class)

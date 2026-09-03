@@ -1,0 +1,44 @@
+meta {
+  name: Register test traveler
+  type: http
+  seq: 4
+  tags: [
+    smoke
+  ]
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/register
+  body: json
+  auth: none
+}
+
+headers {
+  content-type: application/json
+}
+
+body:json {
+  {
+    "fullName": "Morty Smith",
+    "email": "{{travelerEmail}}",
+    "password": "{{travelerPassword}}"
+  }
+}
+
+script:pre-request {
+  const email = `morty.bruno.${Date.now()}@example.com`;
+  bru.setEnvVar("travelerEmail", email);
+  bru.setEnvVar("travelerPassword", "portal-gun-123");
+}
+
+assert {
+  res.status: eq 201
+  res.body.data.tokenType: eq Bearer
+  res.body.data.user.email: eq {{travelerEmail}}
+  res.body.data.user.balance: eq 5000
+}
+
+script:post-response {
+  const body = res.getBody();
+  bru.setEnvVar("accessToken", body.data.accessToken);
+}

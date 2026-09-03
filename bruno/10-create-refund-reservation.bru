@@ -1,0 +1,47 @@
+meta {
+  name: Create reservation to refund
+  type: http
+  seq: 10
+  tags: [
+    smoke
+  ]
+}
+
+post {
+  url: {{baseUrl}}/api/v1/reservations
+  body: json
+  auth: bearer
+}
+
+headers {
+  content-type: application/json
+  Idempotency-Key: 7c3a1b04-9d2e-4f11-a8c6-0b5e2d9f4a10
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "passengerName": "Morty Smith",
+    "destinationId": 1,
+    "travelDate": "2099-12-21",
+    "passengers": 1,
+    "companionIds": [1],
+    "tripType": "express",
+    "insurance": false,
+    "comments": "Bruno refund contract test"
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.data.reservation.status: eq CONFIRMED
+  res.body.data.remainingBalance: isNumber
+}
+
+script:post-response {
+  const body = res.getBody();
+  bru.setEnvVar("cancelReservationId", body.data.reservation.id);
+}

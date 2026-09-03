@@ -14,3 +14,15 @@ springdoc:
   swagger-ui:
     path: /swagger-ui.html
     enabled: false
+
+app:
+  security:
+    jwt:
+      secret: ${JWT_SECRET_BASE64}
+      issuer: ${JWT_ISSUER:https://portaltrip.local}
+      audience: ${JWT_AUDIENCE:portaltrip-api}
+      ttl: ${JWT_TTL:PT30M}
+  wallet:
+    registration-credit: ${REGISTRATION_CREDIT:5000.00}
+  cors:
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:4321,http://127.0.0.1:4321}

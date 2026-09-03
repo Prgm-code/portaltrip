@@ -1,7 +1,7 @@
 meta {
   name: Reject cancellation of completed reservation
   type: http
-  seq: 8
+  seq: 14
   tags: [
     smoke
   ]
@@ -10,7 +10,11 @@ meta {
 patch {
   url: {{baseUrl}}/api/v1/reservations/{{reservationId}}/cancel
   body: none
-  auth: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
 }
 
 assert {

@@ -1,14 +1,19 @@
 package cl.prgm.portaltrip.infrastructure.web.dto;
 
+import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 
+import cl.prgm.portaltrip.application.service.AuthResult;
 import cl.prgm.portaltrip.domain.model.Character;
 import cl.prgm.portaltrip.domain.model.Episode;
 import cl.prgm.portaltrip.domain.model.Location;
+import cl.prgm.portaltrip.domain.model.UserAccount;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -118,6 +123,29 @@ class DtoTest {
 		assertThat(response.status()).isEqualTo("UP");
 		assertThat(response.application()).isEqualTo("portaltrip");
 		assertThat(response.timestamp()).isEqualTo("now");
+	}
+
+	@Test
+	void authAndProfileResponsesHidePasswordHash() {
+		OffsetDateTime now = OffsetDateTime.parse("2026-01-01T10:00:00Z");
+		UserAccount user = new UserAccount(
+				UUID.fromString("00000000-0000-0000-0000-000000000002"),
+				"rick@sanchez.dev",
+				"{bcrypt}hash",
+				"Rick Sanchez",
+				"ROLE_USER",
+				new BigDecimal("5000.00"),
+				now,
+				now);
+		AuthResponseDto auth = AuthResponseDto.from(
+				new AuthResult("token", Instant.parse("2026-01-01T10:30:00Z"), user));
+		UserProfileResponseDto profile = UserProfileResponseDto.from(user);
+
+		assertThat(auth.tokenType()).isEqualTo("Bearer");
+		assertThat(auth.accessToken()).isEqualTo("token");
+		assertThat(auth.user()).isEqualTo(profile);
+		assertThat(profile.email()).isEqualTo("rick@sanchez.dev");
+		assertThat(profile.balance()).isEqualByComparingTo("5000.00");
 	}
 
 }

@@ -1,8 +1,22 @@
--- Esquema propio de la aplicación PortalTrip (reservas de viajes interdimensionales).
+-- Esquema propio de la aplicación PortalTrip (usuarios y reservas de viajes interdimensionales).
 -- Se ejecuta después del seed del catálogo (02- en docker-entrypoint-initdb.d).
+
+CREATE TABLE users (
+  id uuid PRIMARY KEY,
+  email varchar(320) NOT NULL UNIQUE,
+  password_hash varchar(255) NOT NULL,
+  full_name varchar(100) NOT NULL,
+  role varchar(30) NOT NULL,
+  balance numeric(12,2) NOT NULL CHECK (balance >= 0),
+  version bigint NOT NULL DEFAULT 0,
+  created_at timestamptz NOT NULL,
+  updated_at timestamptz NOT NULL
+);
 
 CREATE TABLE reservations (
   id uuid PRIMARY KEY,
+  user_id uuid NOT NULL REFERENCES users (id),
+  idempotency_key uuid NOT NULL,
   number text NOT NULL UNIQUE,
   status text NOT NULL,                 -- CONFIRMED, IN_PROGRESS, COMPLETED, CANCELLED
   passenger_name text NOT NULL,
@@ -24,6 +38,9 @@ CREATE TABLE reservations (
   started_at timestamptz,
   completed_at timestamptz
 );
+
+CREATE UNIQUE INDEX reservations_user_idempotency_key_uq
+  ON reservations (user_id, idempotency_key);
 
 CREATE TABLE reservation_companions (
   reservation_id uuid NOT NULL REFERENCES reservations (id) ON DELETE CASCADE,

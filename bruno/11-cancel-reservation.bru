@@ -1,0 +1,32 @@
+meta {
+  name: Cancel and refund confirmed reservation
+  type: http
+  seq: 11
+  tags: [
+    smoke
+  ]
+}
+
+patch {
+  url: {{baseUrl}}/api/v1/reservations/{{cancelReservationId}}/cancel
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.data.reservation.status: eq CANCELLED
+  res.body.data.reservation.id: eq {{cancelReservationId}}
+}
+
+script:post-response {
+  const body = res.getBody();
+  const expected = Number(bru.getEnvVar("remainingBalance"));
+  if (Number(body.data.remainingBalance) !== expected) {
+    throw new Error(`expected remainingBalance ${expected}, got ${body.data.remainingBalance}`);
+  }
+}

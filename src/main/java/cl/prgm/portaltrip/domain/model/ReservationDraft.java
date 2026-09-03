@@ -2,13 +2,11 @@ package cl.prgm.portaltrip.domain.model;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.regex.Pattern;
 
 import cl.prgm.portaltrip.domain.exception.DomainValidationException;
 
 public record ReservationDraft(
 		String passengerName,
-		String email,
 		Integer destinationId,
 		LocalDate travelDate,
 		int passengers,
@@ -17,17 +15,11 @@ public record ReservationDraft(
 		boolean insurance,
 		String comments) {
 
-	private static final Pattern EMAIL_PATTERN = Pattern.compile("^\\S+@\\S+\\.\\S+$");
-
 	public ReservationDraft {
 		passengerName = passengerName == null ? null : passengerName.trim();
-		email = email == null ? null : email.trim();
 
 		if (passengerName == null || passengerName.length() < 3) {
 			throw new DomainValidationException("Enter the passenger's full name.");
-		}
-		if (email == null || !EMAIL_PATTERN.matcher(email).matches()) {
-			throw new DomainValidationException("Enter a valid email address.");
 		}
 		if (destinationId == null || destinationId < 1) {
 			throw new DomainValidationException("Select a destination.");
@@ -48,7 +40,7 @@ public record ReservationDraft(
 			throw new DomainValidationException("Select a valid trip type.");
 		}
 
-		companionIds = List.copyOf(companionIds);
+		companionIds = companionIds.stream().sorted().toList();
 		comments = comments == null ? "" : comments.trim();
 	}
 }

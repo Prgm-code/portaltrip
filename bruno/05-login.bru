@@ -1,0 +1,37 @@
+meta {
+  name: Login test traveler
+  type: http
+  seq: 5
+  tags: [
+    smoke
+  ]
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/login
+  body: json
+  auth: none
+}
+
+headers {
+  content-type: application/json
+}
+
+body:json {
+  {
+    "email": "{{travelerEmail}}",
+    "password": "{{travelerPassword}}"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.status: eq 200
+  res.body.data.tokenType: eq Bearer
+  res.body.data.user.email: eq {{travelerEmail}}
+}
+
+script:post-response {
+  const body = res.getBody();
+  bru.setEnvVar("accessToken", body.data.accessToken);
+}

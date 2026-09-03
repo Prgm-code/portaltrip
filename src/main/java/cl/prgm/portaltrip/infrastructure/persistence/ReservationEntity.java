@@ -24,13 +24,25 @@ import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 
 @Entity
-@Table(name = "reservations")
+@Table(
+		name = "reservations",
+		uniqueConstraints = @UniqueConstraint(
+				name = "reservations_user_idempotency_key_uq",
+				columnNames = {"user_id", "idempotency_key"}))
 public class ReservationEntity {
 
 	@Id
 	private UUID id;
+
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "user_id", nullable = false)
+	private UserEntity user;
+
+	@Column(name = "idempotency_key", nullable = false)
+	private UUID idempotencyKey;
 
 	@Column(nullable = false, unique = true)
 	private String number;
@@ -120,6 +132,8 @@ public class ReservationEntity {
 				risk);
 		return new Reservation(
 				id,
+				user.getId(),
+				idempotencyKey,
 				number,
 				status,
 				passengerName,
@@ -139,10 +153,13 @@ public class ReservationEntity {
 
 	public static ReservationEntity fromDomain(
 			Reservation reservation,
+			UserEntity user,
 			LocationEntity destination,
 			Set<CharacterEntity> companions) {
 		ReservationEntity entity = new ReservationEntity();
 		entity.id = reservation.id();
+		entity.user = user;
+		entity.idempotencyKey = reservation.idempotencyKey();
 		entity.number = reservation.number();
 		entity.status = reservation.status();
 		entity.passengerName = reservation.passengerName();

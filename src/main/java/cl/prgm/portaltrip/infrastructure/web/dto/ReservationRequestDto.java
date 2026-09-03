@@ -7,7 +7,6 @@ import cl.prgm.portaltrip.domain.model.ReservationDraft;
 import cl.prgm.portaltrip.domain.model.TripType;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -22,10 +21,6 @@ public record ReservationRequestDto(
 		@NotBlank(message = "Passenger name is required")
 		@Size(min = 3, message = "Passenger name must have at least three characters")
 		String passengerName,
-		@Schema(description = "Passenger email", example = "morty@example.com", format = "email", requiredMode = Schema.RequiredMode.REQUIRED)
-		@NotBlank(message = "Email is required")
-		@Email(message = "Email must have a valid format")
-		String email,
 		@Schema(description = "Destination location ID", example = "3", minimum = "1", requiredMode = Schema.RequiredMode.REQUIRED)
 		@NotNull(message = "Destination is required")
 		@Min(value = 1, message = "Destination must be a positive ID")
@@ -66,7 +61,6 @@ public record ReservationRequestDto(
 	public ReservationDraft toDraft() {
 		return new ReservationDraft(
 				passengerName,
-				email,
 				destinationId,
 				travelDate,
 				passengers,
