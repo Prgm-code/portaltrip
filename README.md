@@ -135,11 +135,11 @@ The multi-stage `Dockerfile` builds the WAR with Maven and runs it on Temurin 26
 | `APP_CORS_ALLOWED_ORIGINS` | Public frontend URL, for example `https://app.mydomain.com` |
 | `JWT_ISSUER`, `JWT_AUDIENCE`, `JWT_TTL`, `REGISTRATION_CREDIT` | Optional; they have defaults |
 
-Alternative (recommended, single resource): deploy `compose.yml` as a **Docker Compose** resource in Coolify. It starts the API and PostgreSQL together and loads `db/seed.sql` and `db/app-schema.sql` the first time the `pgdata` volume is created.
+Alternative (recommended, single resource): deploy `compose.coolify.yml` as a **Docker Compose** resource in Coolify. It starts the API and PostgreSQL together and loads `db/seed.sql` and `db/app-schema.sql` the first time the `pgdata` volume is created.
 
-1. New resource → Docker Compose → this repository, branch `main`, file `compose.yml`.
-2. Environment variables: `SPRING_PROFILES_ACTIVE=prod`, `JWT_SECRET_BASE64`, `DB_PASSWORD` and `APP_CORS_ALLOWED_ORIGINS=https://<your-frontend-domain>`. Everything else already has a default in the compose file.
-3. Assign the API domain to the `app` service. Coolify routes it to container port `8080` through its proxy; `compose.yml` publishes no host ports (see `compose.override.yml` for local runs), so it never fails with "port is already allocated".
+1. New resource → Docker Compose → this repository, branch `main`, **Docker Compose location: `compose.coolify.yml`**.
+2. Environment variables: `JWT_SECRET_BASE64`, `DB_PASSWORD` and `APP_CORS_ALLOWED_ORIGINS=https://<your-frontend-domain>`. The profile defaults to `prod` in this file; everything else has a default.
+3. Assign the API domain to the `app` service. Coolify routes it to container port `8080` through its proxy. `compose.coolify.yml` publishes no host ports, so it cannot fail with "port is already allocated" like the local `compose.yml` would.
 4. Check `https://<your-api-domain>/health`. With `prod`, Swagger is disabled.
 
 ---
@@ -149,7 +149,8 @@ Alternative (recommended, single resource): deploy `compose.yml` as a **Docker C
 ```text
 portaltrip/
 ├── pom.xml                                            # Maven, Spring Boot and JaCoCo
-├── compose.yml                                        # PostgreSQL 17 and seed mounts
+├── compose.yml                                        # Local stack: API + PostgreSQL 17 with host ports
+├── compose.coolify.yml                                # Same stack for Coolify, no host ports
 ├── .env.example                                       # Local environment template
 ├── bruno/                                             # Executable REST contract collection
 ├── db/
@@ -415,10 +416,8 @@ The stack defaults to the `dev` profile, so Swagger UI is available at
 `http://localhost:8080/swagger-ui.html`. Inside the Compose network Spring Boot
 connects to the database with the hostname `postgres`.
 
-Host port bindings live in `compose.override.yml`, which Docker Compose merges
-automatically for local runs. `compose.yml` alone only declares `expose: 8080`, so a
-host such as Coolify that runs `docker compose -f compose.yml` publishes no host ports
-and cannot collide with other services on the server.
+For servers with their own reverse proxy (Coolify) use `compose.coolify.yml`, which
+is the same stack without host port bindings.
 
 To run the same stack without documentation endpoints:
 
