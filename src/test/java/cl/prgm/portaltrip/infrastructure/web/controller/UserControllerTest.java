@@ -14,6 +14,8 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import cl.prgm.portaltrip.application.service.PortalActivityService;
+import cl.prgm.portaltrip.infrastructure.web.dto.PortalActivityResponseDto;
 import cl.prgm.portaltrip.application.service.UserService;
 import cl.prgm.portaltrip.domain.exception.ResourceNotFoundException;
 import cl.prgm.portaltrip.domain.model.UserAccount;
@@ -21,12 +23,20 @@ import cl.prgm.portaltrip.infrastructure.web.exception.GlobalExceptionHandler;
 
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(UserController.class)
 @Import(GlobalExceptionHandler.class)
 class UserControllerTest {
+
+    @Test
+    void activityRequiresJsonBody() throws Exception {
+        mockMvc.perform(post("/api/v1/users/me/portal-activity").with(userJwt())
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content("{"))
+                .andExpect(status().isBadRequest());
+    }
 
 	private static final UUID USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000002");
 
@@ -35,6 +45,8 @@ class UserControllerTest {
 
 	@MockitoBean
 	private UserService userService;
+	@MockitoBean
+	private PortalActivityService portalActivityService;
 
 	@Test
 	void meReturnsAuthenticatedProfile() throws Exception {
@@ -67,6 +79,25 @@ class UserControllerTest {
 				.andExpect(status().isNotFound())
 				.andExpect(jsonPath("$.status").value(404));
 	}
+
+	@Test
+    void startsActivityForAuthenticatedUser() throws Exception {
+        UUID cycle = UUID.randomUUID();
+        when(portalActivityService.start(USER_ID)).thenReturn(
+                new PortalActivityResponseDto(cycle, 1, 0, BigDecimal.ZERO, new BigDecimal("5000")));
+        mockMvc.perform(post("/api/v1/users/me/portal-activity/start").with(userJwt()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.cycleId").value(cycle.toString()))
+                .andExpect(jsonPath("$.data.payout").value(0));
+    }
+
+    @Test
+    void rejectsNegativeActivity() throws Exception {
+        mockMvc.perform(post("/api/v1/users/me/portal-activity").with(userJwt())
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("{\"cycleId\":\"" + UUID.randomUUID() + "\",\"sequence\":1,\"activeMs\":-1,\"distance\":1}"))
+                .andExpect(status().isBadRequest());
+    }
 
 	private static org.springframework.test.web.servlet.request.RequestPostProcessor userJwt() {
 		Instant now = Instant.now();

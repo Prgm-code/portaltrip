@@ -13,6 +13,7 @@ import cl.prgm.portaltrip.application.service.AuthResult;
 import cl.prgm.portaltrip.domain.model.Character;
 import cl.prgm.portaltrip.domain.model.Episode;
 import cl.prgm.portaltrip.domain.model.Location;
+import cl.prgm.portaltrip.domain.model.PortalStipendResult;
 import cl.prgm.portaltrip.domain.model.UserAccount;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -146,6 +147,25 @@ class DtoTest {
 		assertThat(auth.user()).isEqualTo(profile);
 		assertThat(profile.email()).isEqualTo("rick@sanchez.dev");
 		assertThat(profile.balance()).isEqualByComparingTo("5000.00");
+	}
+
+	@Test
+	void portalStipendResponseMapsPayoutAndBalance() {
+		OffsetDateTime now = OffsetDateTime.parse("2026-01-01T10:00:00Z");
+		UserAccount user = new UserAccount(
+				UUID.fromString("00000000-0000-0000-0000-000000000002"),
+				"rick@sanchez.dev",
+				"{bcrypt}hash",
+				"Rick Sanchez",
+				"ROLE_USER",
+				new BigDecimal("5980.00"),
+				now,
+				now);
+		PortalStipendResponseDto dto = PortalStipendResponseDto.from(
+				new PortalStipendResult(new BigDecimal("980.00"), user));
+
+		assertThat(dto.payout()).isEqualByComparingTo("980.00");
+		assertThat(dto.balance()).isEqualByComparingTo("5980.00");
 	}
 
 }

@@ -7,9 +7,9 @@
 [![Coverage](https://img.shields.io/badge/Coverage-100%25-brightgreen.svg)](https://prgm-code.github.io/portaltrip/)
 ![Status](https://img.shields.io/badge/Build-Passing-success.svg)
 
-**PortalTrip API** is a REST service built with **Java 26** and **Spring Boot 4.1.1**. It stores the Rick and Morty catalog in PostgreSQL and manages authenticated travelers, a simple credit balance, server-side quotes and user-owned interdimensional reservations.
+**PortalTrip API** is a REST service built with **Java 26** and **Spring Boot 4.1.1**. It stores the Rick and Morty catalog in PostgreSQL and manages authenticated travelers, a simple credit balance, server-side quotes, activity-based portal rewards and user-owned interdimensional reservations.
 
-The application follows the same service pattern as NeonPulse. Controllers depend on service interfaces, `ServiceImpl` classes coordinate each use case and access Spring Data JPA repositories directly. Domain records own their invariants and state transition rules. Spring Security keeps the catalog public, issues HS256 access tokens and scopes reservations to the authenticated user.
+Controllers call application services, which coordinate use cases and access Spring Data JPA repositories directly. Most services use an interface and a `ServiceImpl`; `PortalActivityService` coordinates the activity cycle directly. Domain records own reservation invariants and state transitions, while `PortalActivityEntity` validates persisted activity timing and sequence. Spring Security keeps the catalog public, issues HS256 access tokens and scopes reservations and portal activity to the authenticated user.
 
 [Open the visual system report](https://iy01azmjp64c.postplan.dev)
 
@@ -87,7 +87,7 @@ PostgreSQL is now listening on `localhost:5432` (`rickandmorty` / `rick` / `mort
 ./mvnw clean test
 ```
 
-172 tests (JUnit 5 + Mockito) run against in-memory H2; Docker is not required for this step.
+196 tests (JUnit Jupiter 6 + Mockito) run against in-memory H2; Docker is not required for this step.
 
 ### 3. Start the Backend Microservice
 
@@ -137,7 +137,7 @@ The multi-stage `Dockerfile` builds the WAR with Maven and runs it on Temurin 26
 
 Alternative (recommended, single resource): deploy `compose.coolify.yml` as a **Docker Compose** resource in Coolify. It starts the API and PostgreSQL together. The database image is built from `db/Dockerfile`, which copies `db/seed.sql` and `db/app-schema.sql` into the image, so the catalog and schema load the first time the `pgdata` volume is created even on hosts that rewrite bind mounts.
 
-If the volume was created before the schema existed (the API logs `Schema validation: missing table`), delete it and redeploy: stop the resource, remove the volume from the **Storages** tab (or `docker volume rm <project>_pgdata` on the server) and deploy again.
+For an existing PortalTrip database, apply `db/patch-portal-stipends.sql` before deploying the activity-reward backend. It creates the new tables without removing users, balances or reservations. A redeploy does not rerun initialization SQL on an existing volume. See [existing database upgrades](#existing-database-upgrades).
 
 1. New resource → Docker Compose → this repository, branch `main`, **Docker Compose location: `compose.coolify.yml`**.
 2. Environment variables: `JWT_SECRET_BASE64`, `DB_PASSWORD` and `APP_CORS_ALLOWED_ORIGINS=https://<your-frontend-domain>`. The profile defaults to `prod` in this file; everything else has a default.
@@ -152,6 +152,7 @@ If the volume was created before the schema existed (the API logs `Schema valida
 portaltrip/
 ├── pom.xml                                            # Maven, Spring Boot and JaCoCo
 ├── compose.yml                                        # Local stack: API + PostgreSQL 17 with host ports
+├── compose.frontend.yml                               # Optional local frontend on port 4321
 ├── compose.coolify.yml                                # Same stack for Coolify, no host ports
 ├── db/Dockerfile                                      # PostgreSQL image with seed and schema baked in
 ├── .env.example                                       # Local environment template
@@ -244,7 +245,7 @@ portaltrip/
     │       ├── application-dev.yaml                  # PostgreSQL, JPA and enabled OpenAPI
     │       ├── application-prod.yaml                 # Validated schema and disabled OpenAPI
     │       └── static/index.html                     # Welcome page
-    └── test/java/cl/prgm/portaltrip/                 # 172 automated tests
+    └── test/java/cl/prgm/portaltrip/                 # 196 automated tests
         ├── AuthenticationFlowIntegrationTest.java    # Register, login, JWT, CORS, 401 and 403
         ├── domain/                                   # Model, exception and quote-rule tests
         ├── application/service/                      # Service tests with mocked JPA repositories
@@ -284,6 +285,8 @@ erDiagram
     CHARACTERS ||--o{ CHARACTER_EPISODES : "appears in"
     EPISODES ||--o{ CHARACTER_EPISODES : "contains"
     USERS ||--o{ RESERVATIONS : "purchases"
+    USERS ||--o{ PORTAL_STIPENDS : "earns"
+    USERS ||--o| PORTAL_ACTIVITY : "operates"
     LOCATIONS ||--o{ RESERVATIONS : "destination"
     RESERVATIONS ||--o{ RESERVATION_COMPANIONS : "includes"
     CHARACTERS ||--o{ RESERVATION_COMPANIONS : "selected as"
@@ -298,6 +301,24 @@ erDiagram
         bigint version
         timestamp created_at
         timestamp updated_at
+    }
+
+    PORTAL_STIPENDS {
+        uuid id PK
+        uuid user_id FK
+        decimal amount
+        timestamp created_at
+    }
+
+    PORTAL_ACTIVITY {
+        uuid user_id PK,FK
+        uuid cycle_id
+        timestamp started_at
+        timestamp sampled_at
+        integer sequence
+        bigint active_ms
+        double distance
+        decimal payout
     }
 
     LOCATIONS {
@@ -371,12 +392,13 @@ erDiagram
 5. `reservations.user_id` references `users.id`.
 6. `reservations.destination_id` references `locations.id`.
 7. `reservation_companions` joins reservations and selected characters.
+8. `portal_stipends.user_id` and `portal_activity.user_id` reference `users.id` with cascading deletion.
 
 ---
 
 ## Environment variables and Docker setup
 
-Copy the example configuration before starting the application:
+No `.env` file is required for local development. To override the defaults, optionally copy the example configuration:
 
 ```bash
 cp .env.example .env
@@ -442,8 +464,8 @@ To recreate the database from scratch, run `docker compose down -v && docker com
 ## How to run the application
 
 ```bash
-# Start PostgreSQL
-docker compose up -d
+# Start only PostgreSQL; Maven will run the API below
+docker compose up -d postgres
 
 # Run PortalTrip with the Maven wrapper
 ./mvnw spring-boot:run
@@ -469,7 +491,7 @@ JWT_SECRET_BASE64='replace-with-a-generated-secret' \
 
 ## Testing and JaCoCo coverage
 
-The suite contains **172 tests**. Maven generates the console and HTML reports during `test`, and enforces 100% instruction and branch coverage during `verify`.
+The suite contains **196 tests**. Maven generates the console and HTML reports during `test`, and enforces 100% instruction and branch coverage during `verify`.
 
 ```bash
 # Run tests
@@ -491,10 +513,10 @@ Current verified coverage:
 
 | Counter | Covered | Result |
 | :--- | ---: | :--- |
-| Instructions | 3669 / 3669 | 100% |
-| Branches | 120 / 120 | 100% |
-| Lines | 767 / 767 | 100% |
-| Methods | 235 / 235 | 100% |
+| Instructions | 4465 / 4465 | 100% |
+| Branches | 172 / 172 | 100% |
+| Lines | 915 / 915 | 100% |
+| Methods | 287 / 287 | 100% |
 
 GitHub Actions executes `./mvnw -B clean verify` on pull requests and pushes to `main`. It retains the Surefire and JaCoCo artifacts for 14 days and publishes the successful `main` report with GitHub Pages.
 
@@ -502,7 +524,7 @@ GitHub Actions executes `./mvnw -B clean verify` on pull requests and pushes to 
 
 ## REST API documentation
 
-Catalog and quote endpoints are public. Registration and login are public. Profile and reservation endpoints require `Authorization: Bearer <token>`.
+Catalog and quote endpoints are public. Registration and login are public. Profile, portal activity and reservation endpoints require `Authorization: Bearer <token>`.
 
 Every `/api/v1` endpoint returns the same response envelope:
 
@@ -763,3 +785,135 @@ logging:
 ```
 
 ---
+
+## Portal activity rewards
+
+The server owns eligibility, the random payout and wallet updates. The browser sends
+movement measurements, never a requested amount. Activity is available only to
+an authenticated user. The previous free-claim URL `/api/v1/users/me/portal-stipend`
+is no longer exposed.
+
+### API contract
+
+Both endpoints require `Authorization: Bearer <token>` and use the standard response envelope.
+
+| Method | Endpoint | Result |
+| :--- | :--- | :--- |
+| `POST` | `/api/v1/users/me/portal-activity/start` | Open or resume the user's unfinished cycle; no request body and no payout |
+| `POST` | `/api/v1/users/me/portal-activity` | Validate a sample, return progress and credit the wallet if the cycle completes |
+
+Example sample, using the `cycleId` and `nextSequence` returned by the server:
+
+```json
+{
+  "cycleId": "8fc80791-a9fc-4500-a681-69a8b8334993",
+  "sequence": 1,
+  "activeMs": 900,
+  "distance": 0.6
+}
+```
+
+`activeMs` is active movement time since the preceding sample. The client counts
+consecutive moving events separated by at most 200 ms. `distance` is the path length
+in portal widths, which avoids rewarding larger screens. No coordinates are sent.
+Response data contains `cycleId`, `nextSequence`, `progress` from 0 to 1, `payout`
+and `balance`. An unfinished cycle has `payout: 0`.
+
+The client sends about one sample per second, with one request in flight. The server:
+
+- Checks the cycle belongs to the authenticated account and enforces sample order.
+- Requires at least 750 ms between samples and compares active time to server elapsed time.
+- Accepts at most 5000 active milliseconds and 20 portal widths per sample, and credits at most 4 widths per active second.
+- Requires 2400 active milliseconds and 1.5 portal widths to finish.
+- Resets progress for a stationary sample or a gap longer than 5 seconds; cycles expire at 90 seconds.
+- Returns the previous payout when the last accepted sample is retried, without adding credits again.
+
+Invalid JSON or field constraints return `400`; missing accounts/activity return `404`;
+invalid, expired, out-of-order or too-frequent samples return `422`; the payout cooldown
+returns `429`. Missing or invalid authentication returns `401`.
+
+### Reward amounts
+
+Every completed, paid cycle awards **200 to 1620 credits**. Zero in a response means
+that the activity has not earned its reward yet.
+
+| Rule | Value |
+| :--- | :--- |
+| Gaussian base | Mean 650, standard deviation 100, clamped to 300–900 |
+| Movement bonus | Up to 50%, increasing between 1.5 and 6 validated portal widths |
+| Active-time bonus | Up to 20%, increasing between 2400 and 8000 active milliseconds |
+| Maximum before fatigue | 900 × 1.5 × 1.2 = 1620 |
+| Final minimum after fatigue | 200 |
+| Payout cooldown | 6 seconds |
+| Repeated-help fatigue | Rolling 12-minute window |
+| Earned-credit fatigue | Rolling 20-minute window, reference value 6500 |
+| Consecutive-help reduction | Factor 0.52 when the last payout was less than 28 seconds ago |
+
+Bonuses multiply the base before fatigue and rounding. The 6500 value scales fatigue;
+it is not a hard earnings cap. Staying still adds no active time. Movement and duration
+are bounded so sending larger numbers cannot increase bonuses indefinitely.
+
+### Backend implementation
+
+| File | Responsibility |
+| :--- | :--- |
+| `UserController.java` | Authenticated start/sample routes and request validation |
+| `PortalActivityService.java` | Lock the account, validate its cycle and coordinate one reward |
+| `PortalActivityEntity.java` | Persist cycle ID, timing, sequence, accepted activity and completed payout |
+| `PortalStipendCalculator.java` | Gaussian base, movement/time bonuses, cooldown and fatigue |
+| `PortalStipendServiceImpl.java` | Save the reward history and credit the account |
+| `PortalActivityRequestDto.java`, `PortalActivityResponseDto.java` | Sample and progress/wallet contract |
+| `GlobalExceptionHandler.java` | Structured validation and cooldown errors |
+
+The activity row, reward history and balance change share a transaction. A pessimistic
+account lock serializes concurrent requests, including duplicate final samples.
+`portal_activity` keeps one row per user; `portal_stipends` records successful payouts
+and has a `(user_id, created_at)` index for rolling-window queries.
+
+The integration tests cover inactivity, short passes, pauses, invalid timing, wrong
+cycles, cooldowns, concurrent retries and wallet consistency. Calculator tests cover
+movement/time bonuses, fatigue and the minimum/maximum payout.
+
+These checks validate the protocol and prevent client-selected amounts. They do not
+prove human presence: a modified client can fabricate plausible telemetry.
+
+## Local frontend and backend in Docker
+
+Run from this backend checkout. The optional frontend Compose file defaults to
+`../../../portaltrip-frontend`; set `PORTALTRIP_FRONTEND_PATH` if it is elsewhere.
+For sibling checkouts, use:
+
+```sh
+PORTALTRIP_FRONTEND_PATH=../portaltrip-frontend \
+  docker compose --env-file /dev/null -f compose.yml -f compose.frontend.yml up -d --build
+```
+
+For the default checkout layout:
+
+```sh
+docker compose --env-file /dev/null -f compose.yml -f compose.frontend.yml up -d --build
+```
+
+This builds the frontend image and runs it on `http://localhost:4321`, with the API
+on `http://localhost:8080`. Only Docker is needed for this workflow. `--env-file /dev/null`
+skips the local `.env`; exported shell variables still override Compose defaults.
+
+A fresh database volume automatically loads 126 locations, 826 characters, 51 episodes,
+804 resident links and 1267 character/episode links, followed by the application tables.
+
+### Existing database upgrades
+
+For an existing local database, apply the additive patch once:
+
+```sh
+docker compose exec -T postgres \
+  sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 --single-transaction' \
+  < db/patch-portal-stipends.sql
+```
+
+For Coolify, open the terminal of the PortalTrip `postgres` container, run
+`psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1`, then paste the contents
+of `db/patch-portal-stipends.sql` inside `BEGIN;` and `COMMIT;`. Leave psql with `\q`.
+The patch uses `IF NOT EXISTS` and preserves existing data. It is not baked into a
+migration runner; apply it before deploying the backend, then deploy the matching frontend.
+Fresh volumes already receive both reward tables from `db/app-schema.sql`.

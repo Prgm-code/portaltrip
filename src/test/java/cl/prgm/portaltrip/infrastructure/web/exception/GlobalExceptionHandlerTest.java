@@ -20,6 +20,7 @@ import cl.prgm.portaltrip.domain.exception.IdempotencyConflictException;
 import cl.prgm.portaltrip.domain.exception.InsufficientBalanceException;
 import cl.prgm.portaltrip.domain.exception.InvalidCredentialsException;
 import cl.prgm.portaltrip.domain.exception.InvalidReservationStateException;
+import cl.prgm.portaltrip.domain.exception.PortalStipendCooldownException;
 import cl.prgm.portaltrip.domain.exception.ResourceNotFoundException;
 import cl.prgm.portaltrip.domain.model.ReservationStatus;
 import cl.prgm.portaltrip.infrastructure.web.dto.ApiResponseDto;
@@ -161,6 +162,16 @@ class GlobalExceptionHandlerTest {
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
 		assertThat(response.getBody().data().required()).isEqualByComparingTo("2000.00");
 		assertThat(response.getBody().data().current()).isEqualByComparingTo("100.00");
+	}
+
+	@Test
+	void mapsPortalStipendCooldownTo429() {
+		ResponseEntity<ApiResponseDto<Void>> response = handler.handlePortalStipendCooldown(
+				new PortalStipendCooldownException());
+
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+		assertThat(response.getBody().status()).isEqualTo(429);
+		assertThat(response.getBody().message()).isEqualTo("Portal stipend cooldown");
 	}
 
 	@Test

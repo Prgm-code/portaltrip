@@ -63,4 +63,10 @@ class DomainExceptionTest {
 		assertThat(exception.currentBalance()).isEqualByComparingTo("100.00");
 	}
 
+	@Test
+	void portalStipendCooldownIsExplicit() {
+		assertThat(new PortalStipendCooldownException().getMessage())
+				.isEqualTo("Portal stipend cooldown");
+	}
+
 }

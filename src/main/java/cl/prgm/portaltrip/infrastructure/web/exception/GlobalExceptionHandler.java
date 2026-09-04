@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -20,6 +21,7 @@ import cl.prgm.portaltrip.domain.exception.IdempotencyConflictException;
 import cl.prgm.portaltrip.domain.exception.InsufficientBalanceException;
 import cl.prgm.portaltrip.domain.exception.InvalidCredentialsException;
 import cl.prgm.portaltrip.domain.exception.InvalidReservationStateException;
+import cl.prgm.portaltrip.domain.exception.PortalStipendCooldownException;
 import cl.prgm.portaltrip.domain.exception.ResourceNotFoundException;
 import cl.prgm.portaltrip.infrastructure.web.dto.ApiResponseDto;
 import cl.prgm.portaltrip.infrastructure.web.dto.BalanceErrorDto;
@@ -34,6 +36,12 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<ApiResponseDto<Void>> handleNotFound(ResourceNotFoundException exception) {
 		return ResponseEntity.status(HttpStatus.NOT_FOUND)
 				.body(ApiResponseDto.error(HttpStatus.NOT_FOUND, exception.getMessage()));
+	}
+
+	@ExceptionHandler(HttpMessageNotReadableException.class)
+	public ResponseEntity<ApiResponseDto<Void>> handleInvalidJson(HttpMessageNotReadableException exception) {
+		return ResponseEntity.badRequest()
+				.body(ApiResponseDto.error(HttpStatus.BAD_REQUEST, "A valid JSON request body is required"));
 	}
 
 	@ExceptionHandler(MethodArgumentNotValidException.class)
@@ -115,6 +123,13 @@ public class GlobalExceptionHandler {
 						HttpStatus.UNPROCESSABLE_ENTITY,
 						exception.getMessage(),
 						new BalanceErrorDto(exception.requiredBalance(), exception.currentBalance())));
+	}
+
+	@ExceptionHandler(PortalStipendCooldownException.class)
+	public ResponseEntity<ApiResponseDto<Void>> handlePortalStipendCooldown(
+			PortalStipendCooldownException exception) {
+		return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+				.body(ApiResponseDto.error(HttpStatus.TOO_MANY_REQUESTS, exception.getMessage()));
 	}
 
 	@ExceptionHandler(Exception.class)

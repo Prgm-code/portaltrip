@@ -1,0 +1,16 @@
+# Optional local frontend. Run together with compose.yml.
+# Override PORTALTRIP_FRONTEND_PATH if the frontend checkout is elsewhere.
+services:
+  frontend:
+    build:
+      context: ${PORTALTRIP_FRONTEND_PATH:-../../../portaltrip-frontend}
+      dockerfile: Dockerfile
+      args:
+        PUBLIC_API_URL: http://localhost:8080
+    container_name: portaltrip-frontend
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:4321:80"
+    depends_on:
+      app:
+        condition: service_healthy
