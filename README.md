@@ -152,7 +152,6 @@ For an existing PortalTrip database, apply `db/patch-portal-stipends.sql` before
 portaltrip/
 ├── pom.xml                                            # Maven, Spring Boot and JaCoCo
 ├── compose.yml                                        # Local stack: API + PostgreSQL 17 with host ports
-├── compose.frontend.yml                               # Optional local frontend on port 4321
 ├── compose.coolify.yml                                # Same stack for Coolify, no host ports
 ├── db/Dockerfile                                      # PostgreSQL image with seed and schema baked in
 ├── .env.example                                       # Local environment template
@@ -877,26 +876,17 @@ movement/time bonuses, fatigue and the minimum/maximum payout.
 These checks validate the protocol and prevent client-selected amounts. They do not
 prove human presence: a modified client can fabricate plausible telemetry.
 
-## Local frontend and backend in Docker
+## Local backend in Docker
 
-Run from this backend checkout. The optional frontend Compose file defaults to
-`../../../portaltrip-frontend`; set `PORTALTRIP_FRONTEND_PATH` if it is elsewhere.
-For sibling checkouts, use:
+Run from this backend checkout:
 
 ```sh
-PORTALTRIP_FRONTEND_PATH=../portaltrip-frontend \
-  docker compose --env-file /dev/null -f compose.yml -f compose.frontend.yml up -d --build
+docker compose --env-file /dev/null up -d --build
 ```
 
-For the default checkout layout:
-
-```sh
-docker compose --env-file /dev/null -f compose.yml -f compose.frontend.yml up -d --build
-```
-
-This builds the frontend image and runs it on `http://localhost:4321`, with the API
-on `http://localhost:8080`. Only Docker is needed for this workflow. `--env-file /dev/null`
+This starts PostgreSQL and the API at `http://localhost:8080`. `--env-file /dev/null`
 skips the local `.env`; exported shell variables still override Compose defaults.
+Start the frontend separately from its own checkout with `pnpm install` and `pnpm dev`.
 
 A fresh database volume automatically loads 126 locations, 826 characters, 51 episodes,
 804 resident links and 1267 character/episode links, followed by the application tables.
